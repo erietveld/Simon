@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETool – ServiceNow ScriptInclude Tester</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>ETool</h1>
+  <div class="header-right">
+    <div id="connection-info">Loading config...</div>
+    <div id="auth-actions"></div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="tabs">
+    <button class="tab active" data-tab="scriptinclude">ScriptInclude (GlideAjax)</button>
+    <button class="tab" data-tab="rest">REST API</button>
+    <button class="tab" data-tab="tableexplorer">Table Explorer</button>
+    <button class="tab" data-tab="instances">Instances</button>
+    <button class="tab" data-tab="debug">Debug</button>
+  </div>
+
+  <!-- === ScriptInclude Tab === -->
+  <div id="tab-scriptinclude" class="tab-panel active">
+    <div class="card">
+      <h2>Quick Tests</h2>
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="runQuickTest('x_snc_etools.SystemVersionUtils', 'getInstanceVersion')">
+          SystemVersionUtils.getInstanceVersion
+        </button>
+        <button class="quick-btn" onclick="runQuickTest('x_snc_etools.PluginVersionUtils', 'getPluginVersions')">
+          PluginVersionUtils.getPluginVersions
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Call ScriptInclude</h2>
+      <div class="form-row">
+        <div>
+          <label for="si-name">ScriptInclude Name</label>
+          <input type="text" id="si-name" value="x_snc_etools.SystemVersionUtils" placeholder="scope.ScriptIncludeName">
+        </div>
+        <div>
+          <label for="si-method">Method (sysparm_type)</label>
+          <input type="text" id="si-method" value="getInstanceVersion" placeholder="methodName">
+        </div>
+      </div>
+
+      <label>Additional Parameters</label>
+      <table class="params-table" id="si-params">
+        <thead><tr><th>Name</th><th>Value</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button class="add-param-btn" onclick="addParam()">+ Add Parameter</button>
+
+      <br>
+      <button class="primary" id="si-run" onclick="runScriptInclude()">Run</button>
+    </div>
+
+    <div id="si-response" class="card hidden">
+      <h2>Response</h2>
+      <div class="response-area">
+        <div class="response-header">
+          <span id="si-status"></span>
+          <span id="si-url" style="color: #8b949e; font-size: 12px; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+        </div>
+        <div class="response-body" id="si-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === Instances Tab === -->
+  <div id="tab-instances" class="tab-panel">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="margin-bottom: 0;">ServiceNow Instances</h2>
+        <button class="primary" onclick="showAddInstance()" style="padding: 8px 18px;">+ Add Instance</button>
+      </div>
+      <p style="font-size: 13px; color: #8b949e; margin-bottom: 16px;">
+        Manage multiple ServiceNow instances. The <span style="color:#58a6ff">active</span> instance is used for all API calls and MCP tools.
+        Credentials are stored locally in <code>instances.json</code>.
+      </p>
+      <div id="instance-list" class="instance-list">
+        <div style="color: #8b949e; font-size: 13px;">Loading instances...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === Debug Tab === -->
+  <div id="tab-debug" class="tab-panel">
+    <div class="card">
+      <h2>Session Info</h2>
+      <p style="font-size: 13px; color: #8b949e; margin-bottom: 12px;">Shows the current web session state used for xmlhttp.do calls.</p>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <button class="primary" onclick="loadSessionInfo(false)" style="padding: 8px 16px;">Check Session</button>
+        <button class="primary" onclick="loadSessionInfo(true)" style="padding: 8px 16px; background: #da3633;">Force Refresh Session</button>
+      </div>
+      <div class="response-area">
+        <div class="response-body" id="debug-session" style="min-height: 60px;">Click "Check Session" to view current session state.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>ScriptInclude Source Viewer</h2>
+      <p style="font-size: 13px; color: #8b949e; margin-bottom: 12px;">Fetch the actual ScriptInclude source from ServiceNow to verify how it returns data.</p>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <input type="text" id="debug-si-name" value="x_snc_etools.SystemVersionUtils" placeholder="scope.ScriptIncludeName" style="margin-bottom: 0;">
+        <button class="primary" onclick="loadScriptInfo()" style="padding: 8px 16px; white-space: nowrap;">Fetch Source</button>
+      </div>
+      <div class="response-area">
+        <div class="response-header">
+          <span id="debug-si-status"></span>
+          <span id="debug-si-meta" style="color: #8b949e; font-size: 12px;"></span>
+        </div>
+        <div class="response-body" id="debug-si-body" style="min-height: 100px;">Enter a ScriptInclude name and click "Fetch Source".</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === Table Explorer Tab === -->
+  <div id="tab-tableexplorer" class="tab-panel">
+    <div class="card">
+      <h2>Find Table</h2>
+      <p style="font-size: 13px; color: #8b949e; margin-bottom: 12px;">
+        Enter a table name (e.g. <code>incident</code>) or label (e.g. <code>Incident</code>) to explore its structure and relationships.
+      </p>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <input type="text" id="te-search" placeholder="Table name or label..." style="margin-bottom: 0;"
+          onkeydown="if(event.key==='Enter') searchTable()">
+        <button class="primary" id="te-search-btn" onclick="searchTable()" style="padding: 8px 20px; white-space: nowrap;">Search</button>
+      </div>
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="searchTableByName('incident')">incident</button>
+        <button class="quick-btn" onclick="searchTableByName('sys_user')">sys_user</button>
+        <button class="quick-btn" onclick="searchTableByName('cmdb_ci')">cmdb_ci</button>
+        <button class="quick-btn" onclick="searchTableByName('change_request')">change_request</button>
+      </div>
+    </div>
+
+    <div id="te-suggestions" class="card hidden">
+      <h2>Multiple Matches</h2>
+      <div id="te-suggestions-list" class="quick-actions"></div>
+    </div>
+
+    <div id="te-result" class="card hidden">
+      <div id="te-table-header" style="margin-bottom: 16px;">
+        <h2 id="te-table-title" style="font-size: 18px;"></h2>
+        <div id="te-table-meta" style="font-size: 13px; color: #8b949e;"></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <div>
+          <h3 style="font-size: 14px; color: #58a6ff; margin-bottom: 8px;">
+            Outgoing References <span id="te-out-count" style="color: #8b949e;"></span>
+          </h3>
+          <div id="te-outgoing" class="response-area">
+            <div class="response-body" style="min-height: 60px; max-height: 300px;"></div>
+          </div>
+        </div>
+        <div>
+          <h3 style="font-size: 14px; color: #f0883e; margin-bottom: 8px;">
+            Incoming References <span id="te-in-count" style="color: #8b949e;"></span>
+          </h3>
+          <div id="te-incoming" class="response-area">
+            <div class="response-body" style="min-height: 60px; max-height: 300px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <details>
+        <summary style="cursor: pointer; font-size: 14px; color: #c9d1d9; margin-bottom: 8px;">
+          All Columns <span id="te-col-count" style="color: #8b949e;"></span>
+        </summary>
+        <div id="te-columns" class="response-area" style="margin-top: 8px;">
+          <div class="response-body" style="max-height: 400px;"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- === REST API Tab === -->
+  <div id="tab-rest" class="tab-panel">
+    <div class="card">
+      <h2>Quick Tests</h2>
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="runQuickRest('GET', '/api/now/table/sys_properties?sysparm_query=name=glide.buildname&sysparm_limit=1')">
+          Get Build Name
+        </button>
+        <button class="quick-btn" onclick="runQuickRest('GET', '/api/now/table/sys_user?sysparm_limit=1&sysparm_fields=user_name,name,email')">
+          Get First User
+        </button>
+        <button class="quick-btn" onclick="runQuickRest('GET', '/api/now/stats/incident?sysparm_count=true')">
+          Count Incidents
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>REST API Call</h2>
+      <div class="form-row">
+        <div style="max-width: 120px;">
+          <label for="rest-method">Method</label>
+          <select id="rest-method">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>PATCH</option>
+            <option>DELETE</option>
+          </select>
+        </div>
+        <div>
+          <label for="rest-path">Path (appended to instance URL)</label>
+          <input type="text" id="rest-path" value="/api/now/table/sys_properties?sysparm_query=name=glide.buildname&sysparm_limit=1" placeholder="/api/now/table/...">
+        </div>
+      </div>
+
+      <label for="rest-body">Request Body (JSON, for POST/PUT/PATCH)</label>
+      <textarea id="rest-body" rows="4" placeholder='{"key": "value"}'></textarea>
+
+      <button class="primary" id="rest-run" onclick="runRest()">Run</button>
+    </div>
+
+    <div id="rest-response" class="card hidden">
+      <h2>Response</h2>
+      <div class="response-area">
+        <div class="response-header">
+          <span id="rest-status"></span>
+          <span id="rest-url" style="color: #8b949e; font-size: 12px; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+        </div>
+        <div class="response-body" id="rest-body-out"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- === Add / Edit Instance Modal === -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="if(event.target===this) hideModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2 id="modal-title">Add Instance</h2>
+
+    <label for="inst-name">Name</label>
+    <input type="text" id="inst-name" placeholder="My ServiceNow Instance">
+
+    <label for="inst-url">Instance URL</label>
+    <input type="text" id="inst-url" placeholder="https://mycompany.service-now.com">
+
+    <label>Auth Type</label>
+    <div class="auth-type-toggle">
+      <button class="auth-type-btn selected" id="auth-btn-oauth" onclick="selectAuthType('oauth')">OAuth 2.0</button>
+      <button class="auth-type-btn" id="auth-btn-basic" onclick="selectAuthType('basic')">Basic Auth</button>
+    </div>
+
+    <div id="oauth-fields">
+      <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:12px 14px;margin-bottom:14px;font-size:13px;">
+        <div style="font-weight:600;color:#c9d1d9;margin-bottom:8px;">ServiceNow OAuth Setup</div>
+        <ol style="margin:0;padding-left:18px;color:#c9d1d9;line-height:1.8;">
+          <li>Open the <a id="oauth-setup-link" href="#" target="_blank" style="color:#58a6ff;">Machine Identity Console</a> in ServiceNow <span style="color:#8b949e">(enter instance URL above first)</span></li>
+          <li>Click <strong>New integration</strong> → select <strong>OAuth – Authorization code grant</strong></li>
+          <li>Set <strong>Redirect URL</strong> to <code style="background:#0d1117;padding:1px 5px;border-radius:3px;font-size:12px;">http://localhost:3001/auth/callback</code></li>
+          <li>Copy the generated <strong>Client ID</strong> and <strong>Client Secret</strong> into the fields below</li>
+        </ol>
+      </div>
+
+      <label for="inst-client-id">OAuth Client ID</label>
+      <input type="text" id="inst-client-id" placeholder="Client ID from ServiceNow OAuth registry">
+
+      <label for="inst-client-secret">OAuth Client Secret</label>
+      <input type="password" id="inst-client-secret" placeholder="Client Secret">
+    </div>
+
+    <div id="basic-fields" class="hidden">
+      <label for="inst-username">Username</label>
+      <input type="text" id="inst-username" placeholder="admin">
+
+      <label for="inst-password">Password</label>
+      <input type="password" id="inst-password" placeholder="Password">
+    </div>
+
+    <div class="modal-footer">
+      <button class="secondary" onclick="hideModal()">Cancel</button>
+      <button class="primary" id="modal-save-btn" onclick="saveInstance()">Save</button>
+    </div>
+  </div>
+</div>
+
+  <script src="app.js"></script>
+
+</body>
+</html>

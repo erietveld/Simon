@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "servicenow": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["--env-file-if-exists=.env", "mcp-server.mjs"]
+    }
+  }
+}

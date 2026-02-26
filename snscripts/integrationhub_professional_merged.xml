@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<unload unload_date="2025-03-25 04:03:46">
+  <ua_app_family action="INSERT_OR_UPDATE">
+<app_id>com.glide.hub.integrations.professional</app_id>
+<app_name>ServiceNow IntegrationHub Professional Pack Installer</app_name>
+<cust_visible>true</cust_visible>
+<for_fee>true</for_fee>
+<last_valid_rel>current</last_valid_rel>
+<level>1</level>
+<license_check_required>true</license_check_required>
+<lineage_id>ih_pro_spokes</lineage_id>
+<lineage_name>IntegrationHub Professional Spokes</lineage_name>
+<lob_id>8c3ff788dbbf05900dd712d81396191a</lob_id>
+<lob_name>Automation Engine</lob_name>
+<primary>true</primary>
+<scope>global</scope>
+<skip_custom_role_eval>false</skip_custom_role_eval>
+<sys_created_by>system</sys_created_by>
+<sys_created_on>2025-03-24 04:08:24</sys_created_on>
+<sys_id>e3ad9fdcc92022107cd84a5062e9ae00</sys_id>
+<sys_mod_count>1</sys_mod_count>
+<sys_updated_by>system</sys_updated_by>
+<sys_updated_on>2025-03-24 05:40:47</sys_updated_on>
+</ua_app_family>
+
+  <licensable_app action="INSERT_OR_UPDATE">
+<app_family_id display_value="com.glide.hub.integrations.professional">e3ad9fdcc92022107cd84a5062e9ae00</app_family_id>
+<app_id>com.glide.hub.integrations.professional</app_id>
+<app_name>ServiceNow IntegrationHub Professional Pack Installer</app_name>
+<sys_created_by>maint</sys_created_by>
+<sys_created_on>2025-03-25 03:57:06</sys_created_on>
+<sys_id>4184e83418a42210f877eeb4fbccdf91</sys_id>
+<sys_mod_count>0</sys_mod_count>
+<sys_updated_by>maint</sys_updated_by>
+<sys_updated_on>2025-03-25 03:57:06</sys_updated_on>
+</licensable_app>
+
+  <subscription_entitlement action="INSERT_OR_UPDATE">
+<accelerator_sub_catalogs />
+<add_on>false</add_on>
+<base_entitlement_id />
+<category>0</category>
+<dashboard_id />
+<definition_id>DEF1000204</definition_id>
+<display_type>0</display_type>
+<end_date>2027-05-01</end_date>
+<entitlement_id>3842879</entitlement_id>
+<entitlement_model>Custom Package</entitlement_model>
+<entitlement_type>0</entitlement_type>
+<fge_ids />
+<for_fee>true</for_fee>
+<is_consolidated>false</is_consolidated>
+<measured_role_types>1783b4032323001004402d0d96bf65e1,fc2b307f2332001004402d0d96bf65fc</measured_role_types>
+<meter_type>Unrestricted User</meter_type>
+<name>Integration Hub Professional V2</name>
+<package />
+<parent_entitlement_id>228714</parent_entitlement_id>
+<product_code>PROD19394</product_code>
+<production_instance_names />
+<program_type />
+<purchased_count>55500</purchased_count>
+<quota_defn display_value="">0db8bfca09775210f877cbfe19b9c8a0</quota_defn>
+<start_date>2022-06-30</start_date>
+<status>0</status>
+<subclass_type />
+<subscription_identifier>3842879</subscription_identifier>
+<subscription_type>2</subscription_type>
+<sys_created_by>system</sys_created_by>
+<sys_created_on>2025-02-19 14:20:13</sys_created_on>
+<sys_id>804dabb909731210f877cbfe19b9c865</sys_id>
+<sys_lock_acquired />
+<sys_lock_owner>available</sys_lock_owner>
+<sys_lock_touched>2025-03-25 04:00:18</sys_lock_touched>
+<sys_mod_count>2</sys_mod_count>
+<sys_updated_by>maint</sys_updated_by>
+<sys_updated_on>2025-03-25 04:03:39</sys_updated_on>
+<unit_of_meter>Each</unit_of_meter>
+</subscription_entitlement>
+
+  <subscription_has_app action="INSERT_OR_UPDATE">
+<application display_value="ServiceNow IntegrationHub Professional Pack Installer">4184e83418a42210f877eeb4fbccdf91</application>
+<subscription display_value="IntegrationHub Enterprise – Unrestricted User">3842879</subscription>
+<sys_created_by>system</sys_created_by>
+<sys_created_on>2025-02-19 14:20:24</sys_created_on>
+<sys_id>ba4d6fb909731210f877cbfe19b9c86f</sys_id>
+<sys_mod_count>1</sys_mod_count>
+<sys_updated_by>admin</sys_updated_by>
+<sys_updated_on>2025-04-24 04:40:26</sys_updated_on>
+</subscription_has_app>
+
+  <subscription_has_family action="INSERT_OR_UPDATE">
+<display_type>2</display_type>
+<entitled_role_types />
+<installable>true</installable>
+<subscription display_value="IntegrationHub Enterprise – Unrestricted User">3842879</subscription>
+<subscription_family display_value="Integration Hub Professional Standalone Spokes and Protocols">ih_professional_standalone_spokes</subscription_family>
+<sys_created_by>system</sys_created_by>
+<sys_created_on>2025-02-19 14:20:26</sys_created_on>
+<sys_id>8f4d6fb909731210f877cbfe19b9c8f7</sys_id>
+<sys_mod_count>0</sys_mod_count>
+<sys_updated_by>system</sys_updated_by>
+<sys_updated_on>2025-02-19 14:20:26</sys_updated_on>
+<unrestricted_role_types />
+</subscription_has_family>
+
+</unload>
