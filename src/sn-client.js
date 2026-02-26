@@ -165,10 +165,13 @@ async function getRecord({ table, sysId, fields, displayValue, inst }) {
   return { status: res.status, data: body, url };
 }
 
-async function createRecord({ table, fields, inst }) {
+async function createRecord({ table, fields, transactionScope, inst }) {
   if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
-  const url = `${inst.url}/api/now/table/${encodeURIComponent(table)}`;
+  const params = new URLSearchParams();
+  if (transactionScope) params.set('sysparm_transaction_scope', transactionScope);
+  const qs = params.toString();
+  const url = `${inst.url}/api/now/table/${encodeURIComponent(table)}${qs ? '?' + qs : ''}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -183,10 +186,13 @@ async function createRecord({ table, fields, inst }) {
   return { status: res.status, data: body, url };
 }
 
-async function updateRecord({ table, sysId, fields, inst }) {
+async function updateRecord({ table, sysId, fields, transactionScope, inst }) {
   if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
-  const url = `${inst.url}/api/now/table/${encodeURIComponent(table)}/${sysId}`;
+  const params = new URLSearchParams();
+  if (transactionScope) params.set('sysparm_transaction_scope', transactionScope);
+  const qs = params.toString();
+  const url = `${inst.url}/api/now/table/${encodeURIComponent(table)}/${sysId}${qs ? '?' + qs : ''}`;
   const res = await fetch(url, {
     method: 'PATCH',
     headers: {
@@ -199,6 +205,69 @@ async function updateRecord({ table, sysId, fields, inst }) {
 
   const body = await res.json();
   return { status: res.status, data: body, url };
+}
+
+async function switchUpdateSet({ sys_id, name, inst }) {
+  if (!inst) inst = auth.getActiveInstance();
+  const authHeader = await auth.getAuthHeader(inst);
+
+  // Resolve name → sys_id if needed
+  let targetSysId = sys_id;
+  let targetName = name;
+  if (!targetSysId) {
+    if (!name) throw new Error('Either sys_id or name must be provided');
+    const qp = new URLSearchParams({
+      sysparm_query: `name=${name}^state=in progress`,
+      sysparm_fields: 'sys_id,name',
+      sysparm_limit: '1',
+    });
+    const searchUrl = `${inst.url}/api/now/table/sys_update_set?${qp.toString()}`;
+    const searchRes = await fetch(searchUrl, {
+      method: 'GET',
+      headers: { Authorization: authHeader, Accept: 'application/json' },
+    });
+    const searchData = await searchRes.json();
+    const record = searchData.result?.[0];
+    if (!record) throw new Error(`Update set not found or not in progress: "${name}"`);
+    targetSysId = record.sys_id;
+    targetName = record.name;
+  }
+
+  // Find current user's update set preference record
+  const prefQuery = new URLSearchParams({
+    sysparm_query: 'name=sys_update_set^user=javascript:gs.getUserID()',
+    sysparm_fields: 'sys_id,value',
+    sysparm_limit: '1',
+  });
+  const prefUrl = `${inst.url}/api/now/table/sys_user_preference?${prefQuery.toString()}`;
+  const prefRes = await fetch(prefUrl, {
+    method: 'GET',
+    headers: { Authorization: authHeader, Accept: 'application/json' },
+  });
+  const prefData = await prefRes.json();
+  const existing = prefData.result?.[0];
+
+  let writeRes;
+  if (existing) {
+    // PATCH existing preference
+    const patchUrl = `${inst.url}/api/now/table/sys_user_preference/${existing.sys_id}`;
+    writeRes = await fetch(patchUrl, {
+      method: 'PATCH',
+      headers: { Authorization: authHeader, Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: targetSysId }),
+    });
+  } else {
+    // Create new preference record
+    const postUrl = `${inst.url}/api/now/table/sys_user_preference`;
+    writeRes = await fetch(postUrl, {
+      method: 'POST',
+      headers: { Authorization: authHeader, Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'sys_update_set', value: targetSysId }),
+    });
+  }
+
+  const writeBody = await writeRes.json();
+  return { status: writeRes.status, data: { sys_id: targetSysId, name: targetName, raw: writeBody } };
 }
 
 async function deleteRecord({ table, sysId, inst }) {
@@ -431,6 +500,7 @@ module.exports = {
   getScriptIncludeInfo,
   restApiCall,
   getInstanceInfo,
+  switchUpdateSet,
   getSnSession,
   getSnSessionState,
   resetSnSession,

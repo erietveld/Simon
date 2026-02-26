@@ -8,12 +8,6 @@ A ServiceNow development powertool. It provides:
 
 The Express server handles OAuth authentication. The MCP server reads the same token file, so both work off the same login session.
 
-## ServiceNow Instance
-
-- URL: `https://ergovdemo.service-now.com`
-- Login (if needed): http://localhost:3001/auth/login
-- Auth: OAuth 2.0 (client credentials in `.env`)
-
 ## Architecture
 
 ```
@@ -24,23 +18,6 @@ mcp-server.mjs  — MCP stdio server (ESM, imports CJS via createRequire)
 .mcp.json       — Claude Code MCP registration
 ```
 
-## Available MCP Tools
-
-These tools are available directly in this conversation (prefix: `mcp__servicenow__`):
-
-| Tool | Purpose |
-|------|---------|
-| `sn_query` | Query records with encoded query syntax |
-| `sn_get_record` | Get a single record by sys_id |
-| `sn_create_record` | Create a new record |
-| `sn_update_record` | Update fields on an existing record |
-| `sn_delete_record` | Delete a record |
-| `sn_table_structure` | Get table schema, columns, and relationships |
-| `sn_script_include` | Call a ScriptInclude via GlideAjax |
-| `sn_rest_api` | Generic REST API call (escape hatch) |
-| `sn_instance_info` | Check connection and login status |
-
----
 
 ## Hints System
 

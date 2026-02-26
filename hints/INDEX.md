@@ -9,6 +9,7 @@ This file is the registry of all available hint files. Read the relevant hint fi
 | [now-assist-skills.md](now-assist-skills.md) | Now Assist skill configuration, Creator skills, skill families, deployment channels, admin console URL | Querying or configuring Now Assist skills, finding inactive skills, navigating to Now Assist Admin |
 | [maint-login.md](maint-login.md) | Logging in as MAINT via hop.do URL | Accessing an instance as MAINT user for administrative tasks |
 | [update-set-import.md](update-set-import.md) | Importing an update set XML file, upload.do URL | Navigating directly to the update set import/upload screen |
+| [delete-app.md](delete-app.md) | Deleting custom scoped applications with full cascade | Deleting one or more custom apps and all their artifacts |
 
 ---
 

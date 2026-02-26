@@ -143,11 +143,12 @@ server.registerTool(
     inputSchema: {
       table: z.string().describe('Table name (e.g. incident, change_request)'),
       fields: z.record(z.string(), z.any()).describe('Object of field name/value pairs to set on the new record'),
+      transaction_scope: z.string().optional().describe('Scope sys_id to create within (sysparm_transaction_scope). Ensures artifact lands in the correct app scope. Get sys_id via sn_query on sys_scope table (e.g. query: scope=x_myapp).'),
     },
   },
-  async ({ table, fields }) => {
+  async ({ table, fields, transaction_scope }) => {
     try {
-      const result = await snClient.createRecord({ table, fields });
+      const result = await snClient.createRecord({ table, fields, transactionScope: transaction_scope });
 
       if (result.status >= 400) {
         return {
@@ -177,11 +178,12 @@ server.registerTool(
       table: z.string().describe('Table name'),
       sys_id: z.string().describe('The sys_id of the record to update'),
       fields: z.record(z.string(), z.any()).describe('Object of field name/value pairs to update'),
+      transaction_scope: z.string().optional().describe('Scope sys_id to update within (sysparm_transaction_scope). Ensures change is captured in the correct app scope. Get sys_id via sn_query on sys_scope table (e.g. query: scope=x_myapp).'),
     },
   },
-  async ({ table, sys_id, fields }) => {
+  async ({ table, sys_id, fields, transaction_scope }) => {
     try {
-      const result = await snClient.updateRecord({ table, sysId: sys_id, fields });
+      const result = await snClient.updateRecord({ table, sysId: sys_id, fields, transactionScope: transaction_scope });
 
       if (result.status >= 400) {
         return {
@@ -450,6 +452,46 @@ server.registerTool(
 
       log(`Switched active instance to: ${inst.name} (${inst.url})`);
       return { content: [{ type: 'text', text }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// ============================================================
+// Tool 11: sn_switch_update_set — Switch the active update set
+// ============================================================
+server.registerTool(
+  'sn_switch_update_set',
+  {
+    description: 'Switch the active update set for the authenticated user. Subsequent create/update operations will be captured in this update set. Provide either sys_id or name (name resolves only "in progress" update sets).',
+    inputSchema: {
+      sys_id: z.string().optional().describe('sys_id of the target update set'),
+      name: z.string().optional().describe('Name of the update set (must be "in progress"). Used if sys_id is not provided.'),
+    },
+  },
+  async ({ sys_id, name }) => {
+    try {
+      if (!sys_id && !name) {
+        return {
+          content: [{ type: 'text', text: 'Error: provide either sys_id or name.' }],
+          isError: true,
+        };
+      }
+
+      const result = await snClient.switchUpdateSet({ sys_id, name });
+
+      if (result.status >= 400) {
+        return {
+          content: [{ type: 'text', text: `Error ${result.status}: ${JSON.stringify(result.data?.raw)}` }],
+          isError: true,
+        };
+      }
+
+      const { sys_id: usid, name: uname } = result.data;
+      return {
+        content: [{ type: 'text', text: `Active update set switched.\n\n${JSON.stringify({ sys_id: usid, name: uname }, null, 2)}` }],
+      };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }

@@ -22,7 +22,7 @@ Open the browser UI and go to the **Instances** tab to add your first ServiceNow
 
 ## Instance management
 
-Instances (including credentials and OAuth tokens) are stored in `instances.json` (gitignored). On first run, the instance in `.env` is auto-imported. Additional instances can be added via the web UI at `http://localhost:3001`.
+Instances (including credentials and OAuth tokens) are stored in `instances.json` (gitignored). Manage instances via the web UI at `http://localhost:3001`.
 
 ## MCP tools
 

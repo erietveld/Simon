@@ -1,11 +1,11 @@
 {
-  "name": "etool-tester",
+  "name": "etool",
   "version": "1.0.0",
-  "description": "ServiceNow ScriptInclude testing tool",
-  "main": "server.js",
+  "description": "ServiceNow development powertool",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node --env-file-if-exists=.env server.js",
-    "dev": "node --env-file-if-exists=.env --watch server.js"
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "dev": "node --env-file-if-exists=.env --watch src/server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.0",
