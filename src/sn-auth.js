@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const INSTANCES_FILE = path.join(__dirname, 'instances.json');
+const INSTANCES_FILE = path.join(__dirname, '..', 'instances.json');
 
 function generateId() {
   return 'inst_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);

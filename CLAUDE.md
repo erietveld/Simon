@@ -32,34 +32,38 @@ Read: hints/<topic>.md      ← read the relevant hint(s)
 
 ### When to write a hint
 
-After completing any task that required **3 or more queries** to figure out the right table, field, or pattern — write a hint file so future sessions don't repeat the same discovery work.
+After completing any task that required **3 or more attempts** to figure out the right approach — write a hint file so future sessions don't repeat the same discovery work.
 
 **Trigger examples:**
 - Needed to explore multiple tables before finding the right one
 - Had to try several query approaches before getting useful results
 - Discovered a non-obvious relationship between tables or fields
 - Found a key navigation URL or admin console path after searching
+- Discovered how a ServiceNow API or feature actually works (e.g. publishing, workflow triggers, ACL behaviour)
+- Hit a dead end (API limitation, ACL block, unsupported pattern) — document what was tried and why it failed
+
+> **Hints vs memory:** ServiceNow how-to knowledge — query patterns, API behaviour, workarounds, gotchas — belongs in a hint file, NOT in Claude's auto-memory. Memory is for project-level context (structure, preferences). Hints are for reusable ServiceNow knowledge.
 
 ### How to write a hint
 
 1. Create `hints/<short-topic-name>.md`
 2. Add an entry to `hints/INDEX.md`
 3. Structure the hint file with:
-   - The **key tables** involved
-   - The **efficient query** (the final working approach, not the exploration steps)
-   - Any **gotchas** discovered (e.g., "Creator family has 0 direct skills — use sub-families")
+   - The **key tables** involved (if applicable)
+   - The **efficient approach** (the final working pattern, not the exploration steps)
+   - Any **gotchas or dead ends** discovered (e.g., "Direct write reverted by business rule — must go through workflow")
 
-**Do NOT store current state** (e.g. which records are active/inactive). Hints capture *how to query*, not *what the data is* — live data belongs in the instance, not in hint files.
+**Do NOT store current state** (e.g. which records are active/inactive). Hints capture *how to do things*, not *what the data is* — live data belongs in the instance, not in hint files.
 
 ### Hint file template
 
 ```markdown
-# <Topic> — Query Hints
+# <Topic> — Hints
 
 ## Key Tables
 | Table | Purpose |
 
-## Efficient Query
+## How It Works / Efficient Approach
 \`\`\`
 sn_query:
   table: ...

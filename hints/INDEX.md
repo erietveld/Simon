@@ -10,6 +10,10 @@ This file is the registry of all available hint files. Read the relevant hint fi
 | [maint-login.md](maint-login.md) | Logging in as MAINT via hop.do URL | Accessing an instance as MAINT user for administrative tasks |
 | [update-set-import.md](update-set-import.md) | Importing an update set XML file, upload.do URL | Navigating directly to the update set import/upload screen |
 | [delete-app.md](delete-app.md) | Deleting custom scoped applications with full cascade | Deleting one or more custom apps and all their artifacts |
+| [kb-publish.md](kb-publish.md) | Publishing KB articles via API, kb_version behaviour, why direct writes fail on v3 KBs | Creating or publishing KB articles, setting workflow_state |
+| [ai-agent-config.md](ai-agent-config.md) | AI Agent table architecture, finding agent by user, adding tools (Record lookup) | Querying or modifying Now Assist AI agents, adding tools to agents |
+| [ai-agent-a2a.md](ai-agent-a2a.md) | External Agent (A2A protocol) tables | Working with external/federated agents, A2A connections |
+| [ai-agent-runtime.md](ai-agent-runtime.md) | AI Agent runtime execution tables, debug queries | Debugging agent runs, inspecting tool calls and messages |
 
 ---
 
