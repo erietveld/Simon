@@ -163,6 +163,100 @@ sn_create_record:
       }]
 ```
 
+### Add a Subflow tool to an agent
+For tools that call OOB subflows (preferred over Flow Actions — subflows typically have string-only inputs).
+
+Step 1 — find the OOB subflow:
+```
+sn_query:
+  table: sys_hub_flow
+  query: nameLIKE<keyword>^active=true^type=subflow
+  fields: sys_id,name,description
+  display_value: all
+```
+
+Step 2 — create the tool definition:
+```
+sn_create_record:
+  table: sn_aia_tool
+  fields:
+    name: <ToolName>
+    type: subflow
+    record_type: Custom
+    target_document_table: sys_hub_flow
+    target_document: <sys_hub_flow_sys_id>          ← links to the actual subflow
+    description: <what the tool does, include input names>
+    input_schema: "[]"
+    script: ""
+```
+
+Step 3 — assign tool to agent:
+```
+sn_create_record:
+  table: sn_aia_agent_tool_m2m
+  fields:
+    name: <ToolName>
+    agent: <sn_aia_agent_sys_id>
+    tool: <sn_aia_tool_sys_id>
+    execution_mode: autopilot
+    active: true
+    description: <input mapping instructions for the LLM>
+    entity: sn_aia_agent
+    entity_id: <sn_aia_agent_sys_id>
+    display_output: false
+    inputs: "[]"
+```
+
+### Add a Flow Action tool to an agent
+For tools that call OOB Flow Designer actions. **Prefer subflows** when available — flow actions often require Reference or GUI-type inputs that agents can't provide.
+
+Step 1 — find the OOB flow action:
+```
+sn_query:
+  table: sys_hub_action_type_definition
+  query: nameLIKE<keyword>^active=true
+  fields: sys_id,name,description
+  display_value: all
+```
+
+Step 2 — create the tool definition:
+```
+sn_create_record:
+  table: sn_aia_tool
+  fields:
+    name: <ToolName>
+    type: action
+    record_type: Custom
+    target_document_table: sys_hub_action_type_definition
+    description: <what the tool does, include input names>
+    input_schema: "[]"
+    script: ""
+```
+
+Step 3 — assign tool to agent (same as subflow pattern above).
+
+### Key OOB subflows/actions for adding comments
+
+| Name | Type | sys_id | Inputs | Notes |
+|---|---|---|---|---|
+| Add Worknotes | subflow | `9b9ec8fe531130101bd3ddeeff7b128d` | table (string), sysid (GUID), work_notes (string) | Works on any table; all string inputs — **preferred** |
+| Update work_notes as System | subflow | `2a9ac6d1c37311105d12a78e8740ddf0` | table_name (string), record_sysid (GUID), field_name (string), journal_message (string) | Most flexible; any table, any journal field |
+| Add comment to ticket | action | `008b13afff6a221009b5ffffffffffae` | number (string), comment (string) | Only incident + sc_req_item |
+| Add Work Note To Task | action | `10f7bbf7e7b00300c4726188d2f6a9db` | ah_task (Reference), ah_work_note (string) | **Avoid** — ah_task is a Reference type, unsupported by agents |
+
+### sn_aia_agent: role vs instructions fields
+
+- `role` — persona, tone, constraints, what NOT to do. This is the agent's identity.
+- `instructions` — ordered step-by-step workflow. This shows as the "Steps" / "List of steps" in Agent Studio.
+- When both are populated, Agent Studio renders them as separate sections. If everything is in `role` only, the "Steps" section appears empty in the UI.
+
+### Trigger conditions
+
+- `trigger_flow_definition_type` determines when the trigger evaluates: `record_create`, `record_update`, etc.
+- For `record_create` triggers, do NOT use `CHANGESTO` operators — the record is new, fields don't "change to" a value. Use simple equality: `state=2` not `stateCHANGESTO2`.
+- For `record_update` triggers, `CHANGESTO` and `VALCHANGES` operators work correctly.
+- The `condition` field uses standard ServiceNow encoded query syntax.
+
 ---
 
 ## Gotchas
@@ -176,3 +270,9 @@ sn_create_record:
 - `sn_aia_tool` also needs `script` (copy GlideRecordSecure script from an existing crud tool), `input_schema` (`[{"name":"crudInputs","description":"..."}]`), and `target_document_table=sn_aia_tool` — without these the UI shows an empty tool form
 - `sn_aia_agent_tool_m2m` needs `entity=sn_aia_agent`, `entity_id=<agent_sys_id>`, `widgets=db0e858eff62b210f465ffffffffff2c` for the UI to render the Record Operation widget correctly
 - `execution_mode` API value is `autopilot` (UI shows "Autonomous")
+- Flow Action tool type: `sn_aia_tool.type` = `action`, `target_document_table` = `sys_hub_action_type_definition`. Script and input_schema are empty. **Prefer subflows** (`type=subflow`, `target_document_table=sys_hub_flow`) — flow actions often have Reference-type inputs that agents can't handle.
+- Subflow tool type: `sn_aia_tool.type` = `subflow`, `target_document_table` = `sys_hub_flow`, `target_document` = `<subflow_sys_id>`. Script and input_schema are empty.
+- Agent `role` vs `instructions`: put persona/tone in `role`, put ordered steps in `instructions`. If instructions is empty, the "Steps" section in Agent Studio is blank.
+- Trigger `CHANGESTO` operator: only works with `trigger_flow_definition_type=record_update`. For `record_create` use simple equality (`state=2`).
+- `display_output` on `sn_aia_agent_tool_m2m`: set to `false` to suppress the tool result card shown to the user in conversation
+- `sn_aia_trigger_agent_usecase_m2m` does NOT have an `agent` field. The link to the agent is via `related_resource_table` (= `sn_aia_agent`) + `related_resource_record` (= agent sys_id). Setting a non-existent `agent` field silently does nothing.

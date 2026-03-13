@@ -14,6 +14,10 @@ This file is the registry of all available hint files. Read the relevant hint fi
 | [ai-agent-config.md](ai-agent-config.md) | AI Agent table architecture, finding agent by user, adding tools (Record lookup) | Querying or modifying Now Assist AI agents, adding tools to agents |
 | [ai-agent-a2a.md](ai-agent-a2a.md) | External Agent (A2A protocol) tables | Working with external/federated agents, A2A connections |
 | [ai-agent-runtime.md](ai-agent-runtime.md) | AI Agent runtime execution tables, debug queries | Debugging agent runs, inspecting tool calls and messages |
+| [flow-designer-action-inputs-outputs.md](flow-designer-action-inputs-outputs.md) | Querying Flow Designer action inputs/outputs; correct filter is `model_id` not `action_type_definition` | Inspecting action variables, understanding action configuration |
+| [mcp-ai-skill-tool-definition-inputs.md](mcp-ai-skill-tool-definition-inputs.md) | How tool inputs for `sn_mcp_ai_skill_tool_definition` work — child records in `sn_mcp_ai_skill_tool_input`, linked via `sys_one_extend_definition_attribute` | Adding/fixing inputs on MCP AI Skill Tool Definitions |
+| [flow-actions-ootb.md](flow-actions-ootb.md) | Finding OOB Flow Designer actions, commonly useful actions (Add Work Note, Add Comment), using flow actions as AI Agent tools | Searching for OOB flow actions, adding flow-action-type tools to AI agents |
+| [teams-va-consumer-fault.md](teams-va-consumer-fault.md) | Teams VA "technical issues" error caused by stale `sys_cs_consumer_account.consumer` pointer; duplicate consumer records deactivated by platform cleanup job every ~31 min | Diagnosing Teams channel VA/AI Agent faults, "technical issues" error, faulted conversations |
 
 ---
 
