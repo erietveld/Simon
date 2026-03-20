@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
+const fs = require('fs');
 
 const auth = require('./sn-auth');
 const snClient = require('./sn-client');
@@ -285,6 +286,44 @@ app.post('/api/rest', async (req, res) => {
     console.error('[SN REST Error]', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// --- File-backed log store (max 500 entries, newest first) ---
+const MAX_LOGS = 500;
+const LOGS_FILE = path.join(__dirname, '..', 'logs.json');
+
+function loadLogsFromDisk() {
+  try {
+    return JSON.parse(fs.readFileSync(LOGS_FILE, 'utf8'));
+  } catch {
+    return [];
+  }
+}
+
+function saveLogsToDisk(logs) {
+  fs.writeFile(LOGS_FILE, JSON.stringify(logs), () => {}); // async, fire-and-forget
+}
+
+const logStore = loadLogsFromDisk();
+
+app.get('/api/logs', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 200, 500);
+  res.json({ logs: logStore.slice(0, limit) });
+});
+
+app.post('/api/logs', (req, res) => {
+  const entry = req.body;
+  if (!entry || !entry.tool) return res.status(400).json({ error: 'tool is required' });
+  logStore.unshift({ id: Date.now() + Math.random(), ...entry });
+  if (logStore.length > MAX_LOGS) logStore.length = MAX_LOGS;
+  saveLogsToDisk(logStore);
+  res.json({ ok: true });
+});
+
+app.delete('/api/logs', (req, res) => {
+  logStore.length = 0;
+  saveLogsToDisk(logStore);
+  res.json({ ok: true });
 });
 
 // --- Start ---

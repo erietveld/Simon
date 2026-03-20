@@ -1,21 +1,29 @@
 # ETool — Project Instructions
 
+## Skills
+
+Behaviour guides for working with this project live in `skills/`. Read the relevant one before acting:
+
+| File | When to use |
+|------|-------------|
+| [skills/servicenow-context.md](skills/servicenow-context.md) | Any time — covers how to handle unrecognised instance names and how to use the MCP tools |
+
 ## What This Project Is
 
 A ServiceNow development powertool. It provides:
 - An **Express web server** (`server.js`, port 3001) with a browser UI for manual testing of ServiceNow APIs
 - An **MCP server** (`mcp-server.mjs`) that gives Claude Code native ServiceNow tools directly in this conversation
 
-The Express server handles OAuth authentication. The MCP server reads the same token file, so both work off the same login session.
+The Express server handles OAuth authentication. The MCP server reads the same `instances.json` store, so both work off the same login session.
 
 ## Architecture
 
 ```
-sn-auth.js      — shared OAuth token management (CJS)
-sn-client.js    — shared ServiceNow API operations (CJS)
-server.js       — Express server + web UI
-mcp-server.mjs  — MCP stdio server (ESM, imports CJS via createRequire)
-.mcp.json       — Claude Code MCP registration
+src/sn-auth.js      — shared OAuth token management (CJS)
+src/sn-client.js    — shared ServiceNow API operations (CJS)
+src/server.js       — Express server + web UI
+src/mcp-server.mjs  — MCP stdio server (ESM, imports CJS via createRequire)
+.mcp.json           — Claude Code MCP registration
 ```
 
 

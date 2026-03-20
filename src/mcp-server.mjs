@@ -42,6 +42,46 @@ function writeConfirmation(verb, record) {
   return `Record ${verb} successfully.\n\n${JSON.stringify(summary, null, 2)}`;
 }
 
+// --- Logging to Express server ---
+
+function logToServer(entry) {
+  fetch('http://localhost:3001/api/logs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(entry),
+  }).catch(() => {}); // fire-and-forget, silently ignore if server not running
+}
+
+function withLogging(toolName, handler) {
+  return async (params) => {
+    const startMs = Date.now();
+    const inst = snAuth.getActiveInstance();
+    const requestSize = JSON.stringify(params).length;
+
+    const result = await handler(params);
+
+    const durationMs = Date.now() - startMs;
+    const responseText = result.content?.[0]?.text || '';
+    const responseSize = responseText.length;
+    const truncated = responseText.includes('[Response truncated at');
+
+    logToServer({
+      timestamp: new Date().toISOString(),
+      tool: toolName,
+      instance: inst ? { id: inst.id, name: inst.name, url: inst.url } : null,
+      request: params,
+      requestSize,
+      response: responseText,
+      responseSize,
+      truncated,
+      isError: result.isError === true,
+      durationMs,
+    });
+
+    return result;
+  };
+}
+
 // --- Create MCP server ---
 
 const server = new McpServer({
@@ -67,7 +107,7 @@ server.registerTool(
       display_value: z.enum(['true', 'false', 'all']).optional().describe('Return display values instead of sys_ids. "all" returns both.'),
     },
   },
-  async ({ table, query, fields, limit, offset, order_by, order_dir, display_value }) => {
+  withLogging('sn_query', async ({ table, query, fields, limit, offset, order_by, order_dir, display_value }) => {
     try {
       const result = await snClient.queryRecords({
         table, query, fields, limit, offset,
@@ -91,7 +131,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================
@@ -108,7 +148,7 @@ server.registerTool(
       display_value: z.enum(['true', 'false', 'all']).optional().describe('Return display values'),
     },
   },
-  async ({ table, sys_id, fields, display_value }) => {
+  withLogging('sn_get_record', async ({ table, sys_id, fields, display_value }) => {
     try {
       const result = await snClient.getRecord({
         table, sysId: sys_id, fields, displayValue: display_value,
@@ -130,7 +170,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================
@@ -146,7 +186,7 @@ server.registerTool(
       transaction_scope: z.string().optional().describe('Scope sys_id to create within (sysparm_transaction_scope). Ensures artifact lands in the correct app scope. Get sys_id via sn_query on sys_scope table (e.g. query: scope=x_myapp).'),
     },
   },
-  async ({ table, fields, transaction_scope }) => {
+  withLogging('sn_create_record', async ({ table, fields, transaction_scope }) => {
     try {
       const result = await snClient.createRecord({ table, fields, transactionScope: transaction_scope });
 
@@ -164,7 +204,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================
@@ -181,7 +221,7 @@ server.registerTool(
       transaction_scope: z.string().optional().describe('Scope sys_id to update within (sysparm_transaction_scope). Ensures change is captured in the correct app scope. Get sys_id via sn_query on sys_scope table (e.g. query: scope=x_myapp).'),
     },
   },
-  async ({ table, sys_id, fields, transaction_scope }) => {
+  withLogging('sn_update_record', async ({ table, sys_id, fields, transaction_scope }) => {
     try {
       const result = await snClient.updateRecord({ table, sysId: sys_id, fields, transactionScope: transaction_scope });
 
@@ -198,7 +238,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================
@@ -213,7 +253,7 @@ server.registerTool(
       sys_id: z.string().describe('The sys_id of the record to delete'),
     },
   },
-  async ({ table, sys_id }) => {
+  withLogging('sn_delete_record', async ({ table, sys_id }) => {
     try {
       const result = await snClient.deleteRecord({ table, sysId: sys_id });
 
@@ -230,7 +270,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================
@@ -244,7 +284,7 @@ server.registerTool(
       table: z.string().describe('Table name or label (e.g. incident, sys_user, Change Request)'),
     },
   },
-  async ({ table }) => {
+  withLogging('sn_table_structure', async ({ table }) => {
     try {
       const result = await snClient.getTableStructure(table);
 
@@ -293,7 +333,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================
@@ -309,7 +349,7 @@ server.registerTool(
       params: z.record(z.string(), z.string()).optional().describe('Additional parameters to pass as key-value pairs'),
     },
   },
-  async ({ script_include, method, params }) => {
+  withLogging('sn_script_include', async ({ script_include, method, params }) => {
     try {
       const result = await snClient.callScriptInclude({
         scriptInclude: script_include, method, params,
@@ -343,7 +383,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================
@@ -359,7 +399,7 @@ server.registerTool(
       body: z.any().optional().describe('Request body object (for POST/PUT/PATCH)'),
     },
   },
-  async ({ path, method, body }) => {
+  withLogging('sn_rest_api', async ({ path, method, body }) => {
     try {
       const result = await snClient.restApiCall({ apiPath: path, httpMethod: method, body });
 
@@ -375,7 +415,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================
@@ -386,7 +426,7 @@ server.registerTool(
   {
     description: 'Get the current ServiceNow connection status, instance URL, auth method, and login state. Also lists all registered instances.',
   },
-  async () => {
+  withLogging('sn_instance_info', async () => {
     try {
       const data = snAuth.getInstances();
       const active = snAuth.getActiveInstance();
@@ -417,7 +457,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================
@@ -431,7 +471,7 @@ server.registerTool(
       instance_id: z.string().describe('The instance ID to activate (e.g. "inst_abc123"). Use sn_instance_info to list available IDs.'),
     },
   },
-  async ({ instance_id }) => {
+  withLogging('sn_switch_instance', async ({ instance_id }) => {
     try {
       const inst = snAuth.getInstance(instance_id);
       if (!inst) {
@@ -455,7 +495,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================
@@ -470,7 +510,7 @@ server.registerTool(
       name: z.string().optional().describe('Name of the update set (must be "in progress"). Used if sys_id is not provided.'),
     },
   },
-  async ({ sys_id, name }) => {
+  withLogging('sn_switch_update_set', async ({ sys_id, name }) => {
     try {
       if (!sys_id && !name) {
         return {
@@ -495,7 +535,7 @@ server.registerTool(
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
     }
-  }
+  })
 );
 
 // ============================================================

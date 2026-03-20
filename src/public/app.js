@@ -1,11 +1,20 @@
 // --- Tabs ---
+let logsAutoRefreshTimer = null;
+
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+
     if (tab.dataset.tab === 'instances') loadInstances();
+    if (tab.dataset.tab === 'logs') {
+      loadLogs();
+      startLogsAutoRefresh();
+    } else {
+      stopLogsAutoRefresh();
+    }
   });
 });
 
@@ -57,48 +66,66 @@ async function loadInstances() {
       return;
     }
 
-    listEl.innerHTML = data.instances.map(inst => renderInstanceCard(inst)).join('');
+    listEl.innerHTML = `
+      <table class="instance-table">
+        <thead>
+          <tr>
+            <th style="width:16px"></th>
+            <th>Name</th>
+            <th>URL</th>
+            <th>Auth</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.instances.map(inst => renderInstanceRow(inst)).join('')}
+        </tbody>
+      </table>`;
   } catch (err) {
     listEl.innerHTML = `<div style="color:#f85149;font-size:13px">Error loading instances: ${err.message}</div>`;
   }
 }
 
-function renderInstanceCard(inst) {
-  const authTag = inst.authType === 'oauth'
+function renderInstanceRow(inst) {
+  const authBadge = inst.authType === 'oauth'
     ? '<span class="tag oauth">OAuth</span>'
-    : '<span class="tag basic">Basic Auth</span>';
+    : '<span class="tag basic">Basic</span>';
 
-  const loginTag = inst.loggedIn
+  const statusBadge = inst.loggedIn
     ? '<span class="tag logged-in">Logged in</span>'
-    : (inst.authType === 'oauth' ? '<span class="tag logged-out">Not logged in</span>' : '');
+    : (inst.authType === 'oauth' ? '<span class="tag logged-out">Not logged in</span>' : '<span style="color:#8b949e;font-size:11px">—</span>');
 
-  const activeClass = inst.isActive ? ' active-instance' : '';
-  const activeBadge = inst.isActive ? '<span class="active-badge">ACTIVE</span>' : '';
-
-  const loginBtn = inst.authType === 'oauth'
-    ? (inst.loggedIn
-        ? `<a href="/auth/logout?instanceId=${inst.id}" class="auth-btn logout" style="font-size:12px;padding:5px 12px;">Logout</a>`
-        : `<a href="/auth/login?instanceId=${inst.id}" class="auth-btn login" style="font-size:12px;padding:5px 12px;">Login</a>`)
-    : '';
+  const activeDot = inst.isActive
+    ? '<span class="active-dot" title="Active"></span>'
+    : '<span class="inactive-dot"></span>';
 
   const activateBtn = inst.isActive
     ? ''
-    : `<button class="secondary" onclick="activateInstance('${inst.id}')" style="font-size:12px;padding:5px 12px;">Set Active</button>`;
+    : `<button class="row-btn" onclick="activateInstance('${inst.id}')">Activate</button>`;
+
+  const loginBtn = inst.authType === 'oauth'
+    ? (inst.loggedIn
+        ? `<a href="/auth/logout?instanceId=${inst.id}" class="row-btn logout-btn">Logout</a>`
+        : `<a href="/auth/login?instanceId=${inst.id}" class="row-btn login-btn">Login</a>`)
+    : '';
+
+  const rowClass = inst.isActive ? 'inst-row active-row' : 'inst-row';
 
   return `
-    <div class="instance-card${activeClass}" id="inst-card-${inst.id}">
-      <div class="instance-info">
-        <div class="instance-name">${escHtml(inst.name)} ${activeBadge}</div>
-        <div class="instance-url">${escHtml(inst.url)}</div>
-        <div class="instance-meta">${authTag} ${loginTag}</div>
-      </div>
-      <div class="instance-actions">
-        ${loginBtn}
+    <tr class="${rowClass}" id="inst-row-${inst.id}">
+      <td>${activeDot}</td>
+      <td class="inst-name-cell">${escHtml(inst.name)}</td>
+      <td class="inst-url-cell" title="${escHtml(inst.url)}">${escHtml(inst.url)}</td>
+      <td>${authBadge}</td>
+      <td>${statusBadge}</td>
+      <td class="inst-actions-cell">
         ${activateBtn}
-        <button class="secondary" onclick="showEditInstance('${inst.id}')" style="font-size:12px;padding:5px 12px;">Edit</button>
-        <button class="danger" onclick="deleteInstance('${inst.id}', '${escHtml(inst.name)}')" style="font-size:12px;padding:5px 12px;">Delete</button>
-      </div>
-    </div>`;
+        ${loginBtn}
+        <button class="row-btn" onclick="showEditInstance('${inst.id}')">Edit</button>
+        <button class="row-btn danger-btn" onclick="deleteInstance('${inst.id}', '${escHtml(inst.name)}')">Delete</button>
+      </td>
+    </tr>`;
 }
 
 async function activateInstance(id) {
@@ -152,9 +179,9 @@ async function showEditInstance(id) {
   document.getElementById('inst-name').value = inst.name;
   document.getElementById('inst-url').value = inst.url;
   document.getElementById('inst-client-id').value = inst.clientId || '';
-  document.getElementById('inst-client-secret').value = ''; // don't prefill secret
+  document.getElementById('inst-client-secret').value = '';
   document.getElementById('inst-username').value = inst.username || '';
-  document.getElementById('inst-password').value = ''; // don't prefill password
+  document.getElementById('inst-password').value = '';
   selectAuthType(inst.authType);
   updateOAuthSetupLink();
   document.getElementById('modal-overlay').classList.remove('hidden');
@@ -225,188 +252,49 @@ async function saveInstance() {
   }
 }
 
-// Load instances when the tab is active on page load (if it's the default)
-if (document.querySelector('.tab[data-tab="instances"]').classList.contains('active')) {
-  loadInstances();
-}
+// Load instances on startup (default tab)
+loadInstances();
 
-// --- Params ---
-function addParam(name = '', value = '') {
-  const tbody = document.querySelector('#si-params tbody');
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input type="text" placeholder="sysparm_..." value="${name}" class="param-name"></td>
-    <td><input type="text" placeholder="value" value="${value}" class="param-value"></td>
-    <td><button class="remove-param" onclick="this.closest('tr').remove()">&times;</button></td>
-  `;
-  tbody.appendChild(tr);
-}
-
-function getParams() {
-  const params = {};
-  document.querySelectorAll('#si-params tbody tr').forEach(tr => {
-    const name = tr.querySelector('.param-name').value.trim();
-    const value = tr.querySelector('.param-value').value.trim();
-    if (name) params[name] = value;
-  });
-  return params;
-}
-
-// --- ScriptInclude call ---
-async function runScriptInclude() {
-  const scriptInclude = document.getElementById('si-name').value.trim();
-  const method = document.getElementById('si-method').value.trim();
-  const params = getParams();
-
-  if (!scriptInclude || !method) return alert('ScriptInclude name and method are required');
-
-  const btn = document.getElementById('si-run');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Running...';
-
-  const respCard = document.getElementById('si-response');
-  respCard.classList.remove('hidden');
-  document.getElementById('si-status').innerHTML = '<span class="status-badge pending">Pending</span>';
-  document.getElementById('si-body').textContent = 'Waiting for response...';
-  document.getElementById('si-url').textContent = '';
-
-  try {
-    const res = await fetch('/api/scriptinclude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scriptInclude, method, params }),
-    });
-
-    const data = await res.json();
-
-    if (data.error) {
-      document.getElementById('si-status').innerHTML = '<span class="status-badge error">Error</span>';
-      document.getElementById('si-body').textContent = data.error;
-    } else {
-      const ok = data.status >= 200 && data.status < 300;
-      document.getElementById('si-status').innerHTML =
-        `<span class="status-badge ${ok ? 'ok' : 'error'}">${data.status}</span>`;
-      document.getElementById('si-url').textContent = data.url;
-      document.getElementById('si-body').textContent = formatBody(data.body, data.contentType);
+// --- Name → URL auto-populate ---
+document.getElementById('inst-name').addEventListener('input', function () {
+  const urlField = document.getElementById('inst-url');
+  if (!urlField.value.trim()) {
+    const slug = this.value.trim();
+    if (slug) {
+      urlField.value = `https://${slug}.service-now.com`;
+      updateOAuthSetupLink();
     }
-  } catch (err) {
-    document.getElementById('si-status').innerHTML = '<span class="status-badge error">Error</span>';
-    document.getElementById('si-body').textContent = err.message;
   }
+});
 
-  btn.disabled = false;
-  btn.textContent = 'Run';
-}
+// --- URL normalization on blur ---
+document.getElementById('inst-url').addEventListener('blur', function () {
+  let v = this.value.trim();
+  if (!v) return;
+  v = v.replace(/\/+$/, '');
+  if (!v.startsWith('http://') && !v.startsWith('https://')) v = 'https://' + v;
+  const host = v.replace(/^https?:\/\//, '');
+  if (!host.includes('.')) v = v + '.service-now.com';
+  this.value = v;
+  updateOAuthSetupLink();
+});
 
-function runQuickTest(name, method) {
-  document.getElementById('si-name').value = name;
-  document.getElementById('si-method').value = method;
-  document.querySelector('#si-params tbody').innerHTML = '';
-  runScriptInclude();
-}
+document.getElementById('inst-url').addEventListener('input', updateOAuthSetupLink);
 
-// --- REST call ---
-async function runRest() {
-  const apiPath = document.getElementById('rest-path').value.trim();
-  const httpMethod = document.getElementById('rest-method').value;
-  const bodyStr = document.getElementById('rest-body').value.trim();
-
-  if (!apiPath) return alert('Path is required');
-
-  const btn = document.getElementById('rest-run');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Running...';
-
-  const respCard = document.getElementById('rest-response');
-  respCard.classList.remove('hidden');
-  document.getElementById('rest-status').innerHTML = '<span class="status-badge pending">Pending</span>';
-  document.getElementById('rest-body-out').textContent = 'Waiting for response...';
-  document.getElementById('rest-url').textContent = '';
-
-  let body = null;
-  if (bodyStr && httpMethod !== 'GET') {
-    try { body = JSON.parse(bodyStr); }
-    catch { return alert('Invalid JSON in request body'); }
+function updateOAuthSetupLink() {
+  const link = document.getElementById('oauth-setup-link');
+  if (!link) return;
+  let url = document.getElementById('inst-url').value.trim().replace(/\/+$/, '');
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    if (url && !url.includes('.')) url = 'https://' + url + '.service-now.com';
+    else if (url) url = 'https://' + url;
   }
-
-  try {
-    const res = await fetch('/api/rest', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: apiPath, method: httpMethod, body }),
-    });
-
-    const data = await res.json();
-
-    if (data.error) {
-      document.getElementById('rest-status').innerHTML = '<span class="status-badge error">Error</span>';
-      document.getElementById('rest-body-out').textContent = data.error;
-    } else {
-      const ok = data.status >= 200 && data.status < 300;
-      document.getElementById('rest-status').innerHTML =
-        `<span class="status-badge ${ok ? 'ok' : 'error'}">${data.status}</span>`;
-      document.getElementById('rest-url').textContent = data.url;
-      const display = typeof data.body === 'object' ? JSON.stringify(data.body, null, 2) : data.body;
-      document.getElementById('rest-body-out').textContent = display;
-    }
-  } catch (err) {
-    document.getElementById('rest-status').innerHTML = '<span class="status-badge error">Error</span>';
-    document.getElementById('rest-body-out').textContent = err.message;
-  }
-
-  btn.disabled = false;
-  btn.textContent = 'Run';
-}
-
-function runQuickRest(method, path) {
-  document.getElementById('rest-method').value = method;
-  document.getElementById('rest-path').value = path;
-  document.getElementById('rest-body').value = '';
-  runRest();
-}
-
-// --- Debug ---
-async function loadSessionInfo(forceRefresh = false) {
-  const el = document.getElementById('debug-session');
-  el.textContent = 'Loading...';
-  try {
-    const res = await fetch(`/api/debug/session?refresh=${forceRefresh}`);
-    const data = await res.json();
-    el.textContent = JSON.stringify(data, null, 2);
-  } catch (err) {
-    el.textContent = 'Error: ' + err.message;
-  }
-}
-
-async function loadScriptInfo() {
-  const name = document.getElementById('debug-si-name').value.trim();
-  if (!name) return alert('Enter a ScriptInclude name');
-
-  const bodyEl = document.getElementById('debug-si-body');
-  const statusEl = document.getElementById('debug-si-status');
-  const metaEl = document.getElementById('debug-si-meta');
-
-  bodyEl.textContent = 'Fetching...';
-  statusEl.innerHTML = '<span class="status-badge pending">Loading</span>';
-  metaEl.textContent = '';
-
-  try {
-    const res = await fetch(`/api/scriptinclude-info/${encodeURIComponent(name)}`);
-    const data = await res.json();
-
-    if (data.result && data.result.length > 0) {
-      const si = data.result[0];
-      statusEl.innerHTML = '<span class="status-badge ok">Found</span>';
-      metaEl.textContent = `client_callable=${si.client_callable} | access=${si.access} | active=${si.active}`;
-      bodyEl.textContent = si.script || '(no script body)';
-    } else {
-      statusEl.innerHTML = '<span class="status-badge error">Not Found</span>';
-      metaEl.textContent = '';
-      bodyEl.textContent = 'No ScriptInclude found with name: ' + name + '\n\nFull response:\n' + JSON.stringify(data, null, 2);
-    }
-  } catch (err) {
-    statusEl.innerHTML = '<span class="status-badge error">Error</span>';
-    bodyEl.textContent = err.message;
+  if (url) {
+    link.href = url + '/now/machine-identity-console/inbound-integrations/welcome';
+    link.style.opacity = '1';
+  } else {
+    link.href = '#';
+    link.style.opacity = '0.5';
   }
 }
 
@@ -542,64 +430,133 @@ function renderTableResult(data) {
     }).join('');
 }
 
-// --- Helpers ---
-function formatBody(body, contentType) {
-  try {
-    const obj = JSON.parse(body);
-    return JSON.stringify(obj, null, 2);
-  } catch {}
+// --- Logs Tab ---
 
-  const answerMatch = body.match(/answer="([^"]*)"/);
-  if (answerMatch) {
-    const decoded = answerMatch[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-    try {
-      const obj = JSON.parse(decoded);
-      return 'Parsed from XML answer attribute:\n\n' + JSON.stringify(obj, null, 2);
-    } catch {
-      return 'XML answer: ' + decoded + '\n\nFull response:\n' + body;
-    }
-  }
-
-  return body;
+function startLogsAutoRefresh() {
+  stopLogsAutoRefresh();
+  logsAutoRefreshTimer = setInterval(loadLogs, 5000);
 }
 
+function stopLogsAutoRefresh() {
+  if (logsAutoRefreshTimer) {
+    clearInterval(logsAutoRefreshTimer);
+    logsAutoRefreshTimer = null;
+  }
+}
+
+async function loadLogs() {
+  try {
+    const res = await fetch('/api/logs');
+    const data = await res.json();
+    renderLogs(data.logs || []);
+  } catch (err) {
+    document.getElementById('log-table-wrap').innerHTML =
+      `<div class="log-empty" style="color:#f85149">Error loading logs: ${escHtml(err.message)}</div>`;
+  }
+}
+
+async function clearLogs() {
+  if (!confirm('Clear all logs?')) return;
+  await fetch('/api/logs', { method: 'DELETE' });
+  loadLogs();
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+const toolColors = {
+  sn_query: '#58a6ff',
+  sn_get_record: '#79c0ff',
+  sn_create_record: '#3fb950',
+  sn_update_record: '#d2a8ff',
+  sn_delete_record: '#f85149',
+  sn_table_structure: '#ffa657',
+  sn_script_include: '#e3b341',
+  sn_rest_api: '#f0883e',
+  sn_instance_info: '#8b949e',
+  sn_switch_instance: '#8b949e',
+  sn_switch_update_set: '#8b949e',
+};
+
+function renderLogs(logs) {
+  const wrap = document.getElementById('log-table-wrap');
+  const countEl = document.getElementById('log-count');
+
+  countEl.textContent = logs.length ? `${logs.length} entries` : '';
+
+  if (logs.length === 0) {
+    wrap.innerHTML = '<div class="log-empty">No tool calls logged yet.</div>';
+    return;
+  }
+
+  const rows = logs.map((entry, i) => {
+    const color = toolColors[entry.tool] || '#c9d1d9';
+    const rowClass = entry.isError ? 'log-row log-row-error' : 'log-row';
+    const flags = [
+      entry.truncated ? '<span class="log-flag trunc" title="Response was truncated">T</span>' : '',
+      entry.isError ? '<span class="log-flag error" title="Error response">E</span>' : '',
+    ].filter(Boolean).join('');
+
+    const instName = entry.instance ? escHtml(entry.instance.name) : '<span style="color:#8b949e">—</span>';
+    const ms = entry.durationMs != null ? entry.durationMs : '—';
+
+    return `
+      <tr class="${rowClass}" onclick="toggleLog(${i})" id="log-row-${i}">
+        <td class="log-time">${formatTime(entry.timestamp)}</td>
+        <td><span class="log-tool-badge" style="color:${color}">${escHtml(entry.tool)}</span></td>
+        <td class="log-inst">${instName}</td>
+        <td class="log-size">${formatSize(entry.requestSize || 0)}</td>
+        <td class="log-size">${formatSize(entry.responseSize || 0)}</td>
+        <td>${flags}</td>
+        <td class="log-ms">${ms}</td>
+      </tr>
+      <tr class="log-detail hidden" id="log-detail-${i}">
+        <td colspan="7">
+          <div class="log-detail-inner">
+            <div class="log-detail-col">
+              <div class="log-detail-label">Request · ${entry.instance ? escHtml(entry.instance.url) : '—'}</div>
+              <pre class="log-detail-pre">${escHtml(JSON.stringify(entry.request, null, 2))}</pre>
+            </div>
+            <div class="log-detail-col">
+              <div class="log-detail-label">Response${entry.truncated ? ' <span class="log-flag trunc">truncated</span>' : ''}</div>
+              <pre class="log-detail-pre">${escHtml(entry.response || '(empty)')}</pre>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <table class="log-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Tool</th>
+          <th>Instance</th>
+          <th>Req</th>
+          <th>Resp</th>
+          <th></th>
+          <th>ms</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function toggleLog(i) {
+  const detail = document.getElementById(`log-detail-${i}`);
+  if (detail) detail.classList.toggle('hidden');
+}
+
+// --- Helpers ---
 function escHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// Auto-normalize the instance URL field on blur:
-//   "ervan"                    → https://ervan.service-now.com
-//   "ervan.service-now.com"    → https://ervan.service-now.com
-//   "https://ervan.service-now.com" → unchanged
-document.getElementById('inst-url').addEventListener('blur', function () {
-  let v = this.value.trim();
-  if (!v) return;
-  // Strip trailing slashes
-  v = v.replace(/\/+$/, '');
-  // Add https:// if no protocol
-  if (!v.startsWith('http://') && !v.startsWith('https://')) v = 'https://' + v;
-  // Add .service-now.com if it looks like just a subdomain (no dots after stripping protocol)
-  const host = v.replace(/^https?:\/\//, '');
-  if (!host.includes('.')) v = v + '.service-now.com';
-  this.value = v;
-  updateOAuthSetupLink();
-});
-
-document.getElementById('inst-url').addEventListener('input', updateOAuthSetupLink);
-
-function updateOAuthSetupLink() {
-  const link = document.getElementById('oauth-setup-link');
-  if (!link) return;
-  let url = document.getElementById('inst-url').value.trim().replace(/\/+$/, '');
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    if (url && !url.includes('.')) url = 'https://' + url + '.service-now.com';
-    else if (url) url = 'https://' + url;
-  }
-  if (url) {
-    link.href = url + '/now/machine-identity-console/inbound-integrations/welcome';
-    link.style.opacity = '1';
-  } else {
-    link.href = '#';
-    link.style.opacity = '0.5';
-  }
 }
