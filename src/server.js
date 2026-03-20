@@ -329,7 +329,7 @@ app.delete('/api/logs', (req, res) => {
 // --- Start ---
 app.listen(PORT, () => {
   const active = auth.getActiveInstance();
-  console.log(`\nETool running at http://localhost:${PORT}`);
+  console.log(`\nSIMON running at http://localhost:${PORT}`);
   if (active) {
     console.log(`Active instance: ${active.name} (${active.url})`);
     console.log(`Auth method:     ${active.authType}`);

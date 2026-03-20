@@ -1,4 +1,8 @@
-# ETool — Project Instructions
+# SIMON — Project Instructions
+
+## Identity & Character
+
+See [skills/simon.md](skills/simon.md).
 
 ## Skills
 
@@ -6,7 +10,12 @@ Behaviour guides for working with this project live in `skills/`. Read the relev
 
 | File | When to use |
 |------|-------------|
+| [skills/simon.md](skills/simon.md) | Always — defines SIMON's identity and character |
 | [skills/servicenow-context.md](skills/servicenow-context.md) | Any time — covers how to handle unrecognised instance names and how to use the MCP tools |
+
+## Maintenance
+
+See [MAINTENANCE.md](MAINTENANCE.md) for procedures such as keeping instance names out of project files.
 
 ## What This Project Is
 

@@ -43,7 +43,13 @@ A business rule reverts `workflow_state` back to `draft` on any **REST API** dir
 - `KnowledgeUIAction().publishArticleById()` — may silently do nothing if no KB workflow is active on the instance
 
 **Publish via Scripted REST API (recommended):**
-Create a service on `sys_ws_definition` (see hints/scripted-rest-api.md) with a POST resource whose script does a server-side GlideRecord update. This bypasses the business rule and reliably sets `workflow_state = published`. See also: ETool KB Publisher service (`/api/x_etool/etool_kb_publisher/publish/{article_sys_id}`) already exists on this instance (sys_id: `53bba0a20fa3b690985741e800d1b21c`).
+Create a service on `sys_ws_definition` (see [hints/scripted-rest-api.md](scripted-rest-api.md)) with a POST resource whose script does a server-side GlideRecord update. This bypasses the business rule and reliably sets `workflow_state = published`.
+
+Use namespace `x_simon`, service_id `simon_kb_publisher` → endpoint: `/api/x_simon/simon_kb_publisher/publish/{article_sys_id}`
+
+> **Before creating this service on any instance, ask the user for explicit confirmation.** Check first whether it already exists by querying `sys_ws_definition` with `service_id=simon_kb_publisher`.
+
+> **Do not store sys_ids or instance names in this file.** If you previously created a `x_etool`/`etool_kb_publisher` service on an instance, clean it up: delete its `sys_ws_operation` children, then the `sys_ws_definition` record (see scripted-rest-api.md cleanup section).
 
 ## Efficient Query to Check KB Version
 ```

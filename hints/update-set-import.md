@@ -18,7 +18,7 @@ osascript -e 'tell application "Google Chrome" to set URL of active tab of front
 
 ## Gotchas
 
-- Replace `INSTANCE` with the bare instance name (e.g. `erlab1`)
+- Replace `INSTANCE` with the bare instance name (e.g. `myinstance`)
 - The `now/nav/ui/classic/params/target/` wrapper preserves the SN menu header; the bare `upload.do?...` URL loses it
 - After hopping, the new tab is the active tab — navigate it immediately before switching focus elsewhere
 - After uploading, the update set lands in the Retrieved Update Sets list (`sys_remote_update_set_list.do`)

@@ -1,7 +1,8 @@
 {
-  "name": "etool",
+  "name": "simon",
   "version": "1.0.0",
   "description": "ServiceNow development powertool",
+  "license": "MIT",
   "main": "src/server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env src/server.js",

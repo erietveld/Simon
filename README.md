@@ -1,6 +1,6 @@
-# ETool
+# SIMON
 
-ServiceNow development and admin powertool. Provides a local Express web server for manual API testing and an MCP server that gives Claude Code native ServiceNow tools.
+**S**erviceNow **I**ntegrated **M**CP **O**perations **N**ode — ServiceNow development and admin powertool. Provides a local Express web server for manual API testing and an MCP server that gives Claude Code native ServiceNow tools.
 
 ## Prerequisites
 
@@ -9,11 +9,15 @@ ServiceNow development and admin powertool. Provides a local Express web server 
 
 ## Getting Started
 
-**1. Clone the repo**
+**1. Fork and clone the repo**
+
+Fork the repo on GitHub (top-right **Fork** button), then clone your fork:
 ```bash
-git clone https://github.com/eric-rietveld/etool.git
-cd etool
+git clone https://github.com/<your-username>/simon.git
+cd simon
 ```
+
+> Forking is recommended because `hints/` accumulates your own ServiceNow knowledge over time — forking lets you commit and back up those hints in your own repo. You can still pull upstream updates with `git pull upstream main`.
 
 **2. Install dependencies**
 ```bash

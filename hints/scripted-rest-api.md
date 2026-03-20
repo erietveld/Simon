@@ -1,5 +1,7 @@
 # Scripted REST API — Hints
 
+> **Permission rule:** Always ask the user for explicit confirmation before creating, modifying, or deleting custom API endpoints on any instance. These are shared infrastructure changes.
+
 ## Key Tables
 | Table | Purpose |
 |---|---|
@@ -14,14 +16,14 @@ Required fields:
 | Field | Notes |
 |---|---|
 | `name` | Display name |
-| `service_id` | URL slug (e.g. `etool_kb_publisher`) — becomes part of the base URI |
-| `namespace` | Typically `x_<shortname>` (e.g. `x_etool`). Must match namespace format — avoid hyphens or `kb` suffixes that may fail validation |
+| `service_id` | URL slug (e.g. `simon_kb_publisher`) — becomes part of the base URI |
+| `namespace` | Typically `x_<shortname>` (e.g. `x_simon`). Must match namespace format — avoid hyphens or `kb` suffixes that may fail validation |
 | `is_active` / `active` | Set to `true` |
 | `web_service_version` | Can be left empty for unversioned services |
 
 Base URI pattern: `/api/<namespace>/<service_id>`
 
-Example: namespace=`x_etool`, service_id=`etool_kb_publisher` → `/api/x_etool/etool_kb_publisher`
+Example: namespace=`x_simon`, service_id=`simon_kb_publisher` → `/api/x_simon/simon_kb_publisher`
 
 ## Creating a Resource (`sys_ws_operation`)
 
@@ -63,10 +65,20 @@ Example:
 ```
 sn_rest_api:
   method: POST
-  path: /api/x_etool/etool_kb_publisher/publish/5e6b282a0fe332146f694ad800d1b274
+  path: /api/x_simon/simon_kb_publisher/publish/<article_sys_id>
 ```
 
+## Cleanup — Removing a Scripted REST Service
+
+To remove a service created by mistake or during testing:
+1. Query `sys_ws_definition` for records matching the namespace/service_id to find the sys_id
+2. Delete all child `sys_ws_operation` records first (query by `web_service_definition=<parent_sys_id>`)
+3. Delete the `sys_ws_definition` record
+
+> **Always ask for explicit user confirmation before deleting records on any instance.**
+
 ## Gotchas
-- Namespace format matters — `x_etool_kb` may fail; use a simple `x_<shortname>` form.
+- Namespace format matters — `x_simon_kb` may fail; use a simple `x_<shortname>` form.
 - `web_service_version` appears required in schema but can be empty for unversioned services.
 - Server-side GlideRecord updates in Scripted REST scripts bypass business rules that target REST API writes (important for KB publishing on v3 KBs).
+- **Do not store instance names, sys_ids, or any instance-specific data in hint files.** Hints document patterns, not live data.
