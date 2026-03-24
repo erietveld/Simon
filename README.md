@@ -2,6 +2,10 @@
 
 ServiceNow Integrated MCP Operations Node — ServiceNow development and admin powertool. Provides a local Express web server for manual API testing and an MCP server that gives Claude Code native ServiceNow tools.
 
+## New to this? Start here
+
+See [INSTALLATION.md](INSTALLATION.md) for a step-by-step guide covering VS Code, Claude Code, Node.js, and first use — no prior experience required.
+
 ## Prerequisites
 
 - **Node.js 20.12+** — check your version with `node --version`. Download from [nodejs.org](https://nodejs.org) if needed.
@@ -34,8 +38,8 @@ Open [http://localhost:3001](http://localhost:3001) in your browser.
 **4. Add a ServiceNow instance**
 
 Go to the **Instances** tab and add your instance. Two auth methods are supported:
-- **Basic auth** — username + password
-- **OAuth 2.0** — client ID + client secret (requires an OAuth provider set up on the instance)
+- **OAuth 2.0** *(recommended)* — client ID + client secret (requires an OAuth provider set up on the instance)
+- **Basic auth** — username + password (simpler to set up, but less secure)
 
 Your credentials are stored locally in `instances.json` (gitignored — never committed).
 

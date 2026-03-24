@@ -206,14 +206,15 @@ async function saveInstance() {
 loadInstances();
 
 // --- Name → URL auto-populate ---
+let lastAutoUrl = '';
 document.getElementById('inst-name').addEventListener('input', function () {
   const urlField = document.getElementById('inst-url');
-  if (!urlField.value.trim()) {
+  const currentUrl = urlField.value.trim();
+  if (!currentUrl || currentUrl === lastAutoUrl) {
     const slug = this.value.trim();
-    if (slug) {
-      urlField.value = `https://${slug}.service-now.com`;
-      updateOAuthSetupLink();
-    }
+    lastAutoUrl = slug ? `https://${slug}.service-now.com` : '';
+    urlField.value = lastAutoUrl;
+    updateOAuthSetupLink();
   }
 });
 
