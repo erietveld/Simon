@@ -3,17 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIMON – ServiceNow Maintenance Tool</title>
+  <title>Simon – ServiceNow Maintenance Tool</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
-  <h1>SIMON</h1>
-  <div class="header-right">
-    <div id="connection-info">Loading config...</div>
-    <div id="auth-actions"></div>
-  </div>
+  <h1>Simon</h1>
 </header>
 
 <div class="container">
@@ -32,7 +28,6 @@
         <button class="primary" onclick="showAddInstance()" style="padding: 7px 16px;">+ Add Instance</button>
       </div>
       <p style="font-size: 13px; color: #8b949e; margin-bottom: 14px;">
-        The <span style="color:#58a6ff">active</span> instance is used for all MCP tool calls.
         Credentials stored locally in <code>instances.json</code>.
       </p>
       <div id="instance-list">

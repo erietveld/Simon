@@ -18,35 +18,6 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-// --- Load config + auth status ---
-function loadConfig() {
-  fetch('/api/config')
-    .then(r => r.json())
-    .then(cfg => {
-      const info = document.getElementById('connection-info');
-      const actions = document.getElementById('auth-actions');
-
-      if (cfg.authMethod === 'oauth') {
-        if (cfg.loggedIn) {
-          info.innerHTML = `<span class="instance">${cfg.instance}</span> &middot; <span class="auth">OAuth</span>`;
-          actions.innerHTML = '<a href="/auth/logout" class="auth-btn logout">Logout</a>';
-        } else {
-          info.innerHTML = `<span class="instance">${cfg.instance}</span> &middot; <span class="not-logged-in">Not logged in</span>`;
-          actions.innerHTML = '<a href="/auth/login" class="auth-btn login">Login with ServiceNow</a>';
-        }
-      } else if (cfg.authMethod === 'basic') {
-        info.innerHTML = `<span class="instance">${cfg.instance}</span> &middot; <span class="auth">Basic Auth</span> &middot; ${cfg.user}`;
-        actions.innerHTML = '';
-      } else {
-        info.innerHTML = '<span style="color:#f85149">No instance configured</span>';
-        actions.innerHTML = '';
-      }
-    })
-    .catch(() => {
-      document.getElementById('connection-info').textContent = 'Could not load config';
-    });
-}
-loadConfig();
 
 // --- Instances Tab ---
 
@@ -70,7 +41,6 @@ async function loadInstances() {
       <table class="instance-table">
         <thead>
           <tr>
-            <th style="width:16px"></th>
             <th>Name</th>
             <th>URL</th>
             <th>Auth</th>
@@ -96,31 +66,19 @@ function renderInstanceRow(inst) {
     ? '<span class="tag logged-in">Logged in</span>'
     : (inst.authType === 'oauth' ? '<span class="tag logged-out">Not logged in</span>' : '<span style="color:#8b949e;font-size:11px">—</span>');
 
-  const activeDot = inst.isActive
-    ? '<span class="active-dot" title="Active"></span>'
-    : '<span class="inactive-dot"></span>';
-
-  const activateBtn = inst.isActive
-    ? ''
-    : `<button class="row-btn" onclick="activateInstance('${inst.id}')">Activate</button>`;
-
   const loginBtn = inst.authType === 'oauth'
     ? (inst.loggedIn
         ? `<a href="/auth/logout?instanceId=${inst.id}" class="row-btn logout-btn">Logout</a>`
         : `<a href="/auth/login?instanceId=${inst.id}" class="row-btn login-btn">Login</a>`)
     : '';
 
-  const rowClass = inst.isActive ? 'inst-row active-row' : 'inst-row';
-
   return `
-    <tr class="${rowClass}" id="inst-row-${inst.id}">
-      <td>${activeDot}</td>
+    <tr class="inst-row" id="inst-row-${inst.id}">
       <td class="inst-name-cell">${escHtml(inst.name)}</td>
       <td class="inst-url-cell" title="${escHtml(inst.url)}">${escHtml(inst.url)}</td>
       <td>${authBadge}</td>
       <td>${statusBadge}</td>
       <td class="inst-actions-cell">
-        ${activateBtn}
         ${loginBtn}
         <button class="row-btn" onclick="showEditInstance('${inst.id}')">Edit</button>
         <button class="row-btn danger-btn" onclick="deleteInstance('${inst.id}', '${escHtml(inst.name)}')">Delete</button>
@@ -128,17 +86,10 @@ function renderInstanceRow(inst) {
     </tr>`;
 }
 
-async function activateInstance(id) {
-  await fetch(`/api/instances/${id}/activate`, { method: 'POST' });
-  loadInstances();
-  loadConfig();
-}
-
 async function deleteInstance(id, name) {
   if (!confirm(`Delete instance "${name}"? This cannot be undone.`)) return;
   await fetch(`/api/instances/${id}`, { method: 'DELETE' });
   loadInstances();
-  loadConfig();
 }
 
 // --- Modal ---
@@ -244,7 +195,6 @@ async function saveInstance() {
 
     hideModal();
     loadInstances();
-    loadConfig();
   } catch (err) {
     alert('Error: ' + err.message);
   } finally {
@@ -482,7 +432,6 @@ const toolColors = {
   sn_script_include: '#e3b341',
   sn_rest_api: '#f0883e',
   sn_instance_info: '#8b949e',
-  sn_switch_instance: '#8b949e',
   sn_switch_update_set: '#8b949e',
 };
 
