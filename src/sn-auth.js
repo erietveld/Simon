@@ -17,7 +17,7 @@ function loadData() {
   } catch (err) {
     console.error('[Auth] Failed to load instances.json:', err.message);
   }
-  return { activeInstanceId: null, instances: [] };
+  return { instances: [] };
 }
 
 function saveData(data) {
@@ -32,13 +32,6 @@ function saveData(data) {
 
 function getInstances() {
   return loadData();
-}
-
-function getActiveInstance() {
-  const data = loadData();
-  return data.instances.find(i => i.id === data.activeInstanceId)
-    || data.instances[0]
-    || null;
 }
 
 function getInstance(id) {
@@ -65,7 +58,6 @@ function addInstance(cfg) {
   }
 
   data.instances.push(inst);
-  if (!data.activeInstanceId) data.activeInstanceId = id;
   saveData(data);
   return inst;
 }
@@ -86,17 +78,6 @@ function updateInstance(id, changes) {
 function deleteInstance(id) {
   const data = loadData();
   data.instances = data.instances.filter(i => i.id !== id);
-  if (data.activeInstanceId === id) {
-    data.activeInstanceId = data.instances[0]?.id || null;
-  }
-  saveData(data);
-  return true;
-}
-
-function setActiveInstance(id) {
-  const data = loadData();
-  if (!data.instances.find(i => i.id === id)) return false;
-  data.activeInstanceId = id;
   saveData(data);
   return true;
 }
@@ -168,10 +149,7 @@ async function refreshAccessToken(inst) {
 }
 
 async function getAuthHeader(inst) {
-  if (!inst) {
-    inst = getActiveInstance();
-    if (!inst) throw new Error('No ServiceNow instance configured. Add one via http://localhost:3001');
-  }
+  if (!inst) throw new Error('No ServiceNow instance provided');
 
   if (inst.authType !== 'oauth') return getBasicAuthHeader(inst);
 
@@ -193,12 +171,10 @@ async function getAuthHeader(inst) {
 
 module.exports = {
   getInstances,
-  getActiveInstance,
   getInstance,
   addInstance,
   updateInstance,
   deleteInstance,
-  setActiveInstance,
   saveInstanceSession,
   isLoggedIn,
   useOAuth,

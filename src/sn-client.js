@@ -21,8 +21,7 @@ function getSessionState(instanceId) {
 }
 
 async function getSnSession(forceRefresh = false, inst) {
-  if (!inst) inst = auth.getActiveInstance();
-  if (!inst) throw new Error('No active ServiceNow instance');
+  if (!inst) throw new Error('No ServiceNow instance provided');
 
   const existing = getSessionState(inst.id);
   const now = Date.now();
@@ -118,15 +117,12 @@ function resetSnSession(instanceId) {
 }
 
 function getSnSessionState(instanceId) {
-  if (instanceId) return getSessionState(instanceId);
-  const inst = auth.getActiveInstance();
-  return inst ? getSessionState(inst.id) : { cookies: null, csrfToken: null, expiry: 0 };
+  return getSessionState(instanceId);
 }
 
 // --- ServiceNow API operations ---
 
 async function queryRecords({ table, query, fields, limit, offset, orderBy, orderDir, displayValue, inst }) {
-  if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
   const params = new URLSearchParams();
   if (query) params.set('sysparm_query', query);
@@ -149,7 +145,6 @@ async function queryRecords({ table, query, fields, limit, offset, orderBy, orde
 }
 
 async function getRecord({ table, sysId, fields, displayValue, inst }) {
-  if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
   const params = new URLSearchParams();
   if (fields) params.set('sysparm_fields', Array.isArray(fields) ? fields.join(',') : fields);
@@ -166,7 +161,6 @@ async function getRecord({ table, sysId, fields, displayValue, inst }) {
 }
 
 async function createRecord({ table, fields, transactionScope, inst }) {
-  if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
   const params = new URLSearchParams();
   if (transactionScope) params.set('sysparm_transaction_scope', transactionScope);
@@ -187,7 +181,6 @@ async function createRecord({ table, fields, transactionScope, inst }) {
 }
 
 async function updateRecord({ table, sysId, fields, transactionScope, inst }) {
-  if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
   const params = new URLSearchParams();
   if (transactionScope) params.set('sysparm_transaction_scope', transactionScope);
@@ -208,7 +201,6 @@ async function updateRecord({ table, sysId, fields, transactionScope, inst }) {
 }
 
 async function switchUpdateSet({ sys_id, name, inst }) {
-  if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
 
   // Resolve name → sys_id if needed
@@ -271,7 +263,6 @@ async function switchUpdateSet({ sys_id, name, inst }) {
 }
 
 async function deleteRecord({ table, sysId, inst }) {
-  if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
   const url = `${inst.url}/api/now/table/${encodeURIComponent(table)}/${sysId}`;
   const res = await fetch(url, {
@@ -286,7 +277,6 @@ async function deleteRecord({ table, sysId, inst }) {
 }
 
 async function getTableStructure(tableName, inst) {
-  if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
   const search = tableName.trim();
 
@@ -370,7 +360,6 @@ async function getTableStructure(tableName, inst) {
 }
 
 async function callScriptInclude({ scriptInclude, method, params, inst }) {
-  if (!inst) inst = auth.getActiveInstance();
 
   let session;
   try {
@@ -421,7 +410,6 @@ async function callScriptInclude({ scriptInclude, method, params, inst }) {
 }
 
 async function getScriptIncludeInfo(name, inst) {
-  if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
 
   let url = `${inst.url}/api/now/table/sys_script_include?sysparm_query=api_name=${name}&sysparm_fields=name,api_name,script,client_callable,access,active&sysparm_limit=1`;
@@ -448,7 +436,6 @@ async function getScriptIncludeInfo(name, inst) {
 }
 
 async function restApiCall({ apiPath, httpMethod = 'GET', body, inst }) {
-  if (!inst) inst = auth.getActiveInstance();
   const authHeader = await auth.getAuthHeader(inst);
   const url = `${inst.url}${apiPath}`;
   console.log(`[SN REST] ${httpMethod} ${url}`);
@@ -479,7 +466,6 @@ async function restApiCall({ apiPath, httpMethod = 'GET', body, inst }) {
 }
 
 async function getInstanceInfo(inst) {
-  if (!inst) inst = auth.getActiveInstance();
   if (!inst) return { instance: '(none)', authMethod: 'none', loggedIn: false, user: '(none)' };
   return {
     instance: inst.url,

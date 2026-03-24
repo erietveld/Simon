@@ -135,7 +135,7 @@ The Studio test panel has a "Download Log" button. It calls:
 ```
 GET /api/sn_build_agent/build_agent_api/conversations/{id}/messages
 ```
-This endpoint requires a **user API token** (not the standard OAuth token) — it returns 401 with normal SIMON credentials.
+This endpoint requires a **user API token** (not the standard OAuth token) — it returns 401 with normal Simon credentials.
 
 The same data is fully accessible via the Table API using the tables above. The `.do?sys_id=` URL embedded in gen_ai task output is just a ServiceNow form link, not a download endpoint.
 

@@ -1,6 +1,6 @@
-# SIMON
+# Simon
 
-**S**erviceNow **I**ntegrated **M**CP **O**perations **N**ode — ServiceNow development and admin powertool. Provides a local Express web server for manual API testing and an MCP server that gives Claude Code native ServiceNow tools.
+ServiceNow Integrated MCP Operations Node — ServiceNow development and admin powertool. Provides a local Express web server for manual API testing and an MCP server that gives Claude Code native ServiceNow tools.
 
 ## Prerequisites
 

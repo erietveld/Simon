@@ -3,7 +3,7 @@
     "servicenow": {
       "type": "stdio",
       "command": "node",
-      "args": ["--env-file-if-exists=.env", "src/mcp-server.mjs"]
+      "args": ["src/mcp-server.mjs"]
     }
   }
 }

@@ -1,4 +1,4 @@
-# SIMON — Project Instructions
+# Simon — Project Instructions
 
 ## Identity & Character
 
@@ -10,7 +10,7 @@ Behaviour guides for working with this project live in `skills/`. Read the relev
 
 | File | When to use |
 |------|-------------|
-| [skills/simon.md](skills/simon.md) | Always — defines SIMON's identity and character |
+| [skills/simon.md](skills/simon.md) | Always — defines Simon's identity and character |
 | [skills/servicenow-context.md](skills/servicenow-context.md) | Any time — covers how to handle unrecognised instance names and how to use the MCP tools |
 
 ## Maintenance

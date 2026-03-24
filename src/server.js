@@ -24,11 +24,9 @@ function decodeState(state) {
 // --- OAuth Authorization Code routes ---
 
 // Step 1: Redirect user to ServiceNow login
-// Query param: ?instanceId=<id>  (defaults to active instance)
+// Query param: ?instanceId=<id>
 app.get('/auth/login', (req, res) => {
-  const inst = req.query.instanceId
-    ? auth.getInstance(req.query.instanceId)
-    : auth.getActiveInstance();
+  const inst = req.query.instanceId ? auth.getInstance(req.query.instanceId) : null;
 
   if (!inst) return res.send('<h2>Instance not found</h2><a href="/">Back</a>');
   if (inst.authType !== 'oauth') return res.redirect('/');
@@ -58,9 +56,7 @@ app.get('/auth/callback', async (req, res) => {
   }
 
   const stateData = decodeState(state || '');
-  const inst = stateData?.instanceId
-    ? auth.getInstance(stateData.instanceId)
-    : auth.getActiveInstance();
+  const inst = stateData?.instanceId ? auth.getInstance(stateData.instanceId) : null;
 
   if (!inst) {
     return res.send('<h2>Unknown instance in OAuth callback</h2><a href="/">Back</a>');
@@ -107,11 +103,9 @@ app.get('/auth/callback', async (req, res) => {
   }
 });
 
-// Logout — ?instanceId=<id> (defaults to active instance)
+// Logout — ?instanceId=<id>
 app.get('/auth/logout', (req, res) => {
-  const inst = req.query.instanceId
-    ? auth.getInstance(req.query.instanceId)
-    : auth.getActiveInstance();
+  const inst = req.query.instanceId ? auth.getInstance(req.query.instanceId) : null;
 
   if (inst) {
     auth.saveInstanceSession(inst.id, { accessToken: null, refreshToken: null, tokenExpiry: 0 });
@@ -132,14 +126,13 @@ app.get('/api/instances', (req, res) => {
     url: inst.url,
     authType: inst.authType,
     loggedIn: auth.isLoggedIn(inst),
-    isActive: inst.id === data.activeInstanceId,
     // Include non-secret fields needed by the UI
     username: inst.username || null,
     clientId: inst.clientId || null,
     // Session expiry info for OAuth
     tokenExpiry: inst.session?.tokenExpiry || null,
   }));
-  res.json({ activeInstanceId: data.activeInstanceId, instances: safe });
+  res.json({ instances: safe });
 });
 
 function normalizeUrl(url) {
@@ -198,16 +191,6 @@ app.delete('/api/instances/:id', ({ params }, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/instances/:id/activate — set as active instance
-app.post('/api/instances/:id/activate', (req, res) => {
-  if (!auth.setActiveInstance(req.params.id)) {
-    return res.status(404).json({ error: 'Instance not found' });
-  }
-  const inst = auth.getInstance(req.params.id);
-  console.log(`[Instances] Activated: ${inst.name}`);
-  res.json({ ok: true });
-});
-
 // --- API: get current config + auth status ---
 app.get('/api/config', async (req, res) => {
   const info = await snClient.getInstanceInfo();
@@ -218,7 +201,7 @@ app.get('/api/config', async (req, res) => {
 app.get('/api/debug/session', async (req, res) => {
   try {
     const forceRefresh = req.query.refresh === 'true';
-    const inst = auth.getActiveInstance();
+    const inst = req.query.instanceId ? auth.getInstance(req.query.instanceId) : null;
     const session = await snClient.getSnSession(forceRefresh, inst);
     res.json({
       instanceId: inst?.id,
@@ -288,52 +271,35 @@ app.post('/api/rest', async (req, res) => {
   }
 });
 
-// --- File-backed log store (max 500 entries, newest first) ---
+// --- NDJSON log reader ---
 const MAX_LOGS = 500;
-const LOGS_FILE = path.join(__dirname, '..', 'logs.json');
+const LOGS_FILE = path.join(__dirname, '..', 'logs.ndjson');
 
-function loadLogsFromDisk() {
+function readLogsFromDisk(limit) {
   try {
-    return JSON.parse(fs.readFileSync(LOGS_FILE, 'utf8'));
+    const lines = fs.readFileSync(LOGS_FILE, 'utf8').split('\n').filter(l => l.trim());
+    return lines.slice(-limit).reverse().map(l => JSON.parse(l));
   } catch {
     return [];
   }
 }
 
-function saveLogsToDisk(logs) {
-  fs.writeFile(LOGS_FILE, JSON.stringify(logs), () => {}); // async, fire-and-forget
-}
-
-const logStore = loadLogsFromDisk();
-
 app.get('/api/logs', (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit) || 200, 500);
-  res.json({ logs: logStore.slice(0, limit) });
-});
-
-app.post('/api/logs', (req, res) => {
-  const entry = req.body;
-  if (!entry || !entry.tool) return res.status(400).json({ error: 'tool is required' });
-  logStore.unshift({ id: Date.now() + Math.random(), ...entry });
-  if (logStore.length > MAX_LOGS) logStore.length = MAX_LOGS;
-  saveLogsToDisk(logStore);
-  res.json({ ok: true });
+  const limit = Math.min(parseInt(req.query.limit) || 200, MAX_LOGS);
+  res.json({ logs: readLogsFromDisk(limit) });
 });
 
 app.delete('/api/logs', (req, res) => {
-  logStore.length = 0;
-  saveLogsToDisk(logStore);
+  fs.writeFile(LOGS_FILE, '', () => {});
   res.json({ ok: true });
 });
 
 // --- Start ---
 app.listen(PORT, () => {
-  const active = auth.getActiveInstance();
-  console.log(`\nSIMON running at http://localhost:${PORT}`);
-  if (active) {
-    console.log(`Active instance: ${active.name} (${active.url})`);
-    console.log(`Auth method:     ${active.authType}`);
-  } else {
-    console.log('No instance configured — open http://localhost:' + PORT + ' to add one');
-  }
+  const { instances } = auth.getInstances();
+  console.log(`\nSimon running at http://localhost:${PORT}`);
+  console.log(instances.length
+    ? `Instances configured: ${instances.length}`
+    : 'No instance configured — open http://localhost:' + PORT + ' to add one'
+  );
 });

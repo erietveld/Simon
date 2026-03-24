@@ -2,6 +2,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { createRequire } from 'module';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const LOGS_FILE = join(__dirname, '..', 'logs.ndjson');
 
 const require = createRequire(import.meta.url);
 
@@ -42,30 +48,27 @@ function writeConfirmation(verb, record) {
   return `Record ${verb} successfully.\n\n${JSON.stringify(summary, null, 2)}`;
 }
 
-// --- Logging to Express server ---
+// --- Logging to disk (NDJSON) ---
 
-function logToServer(entry) {
-  fetch('http://localhost:3001/api/logs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(entry),
-  }).catch(() => {}); // fire-and-forget, silently ignore if server not running
+function logToFile(entry) {
+  const line = JSON.stringify({ id: Date.now() + Math.random(), ...entry }) + '\n';
+  fs.appendFile(LOGS_FILE, line, () => {}); // fire-and-forget
 }
 
 function withLogging(toolName, handler) {
   return async (params) => {
     const startMs = Date.now();
-    const inst = snAuth.getActiveInstance();
+    const inst = params.instance_id ? snAuth.getInstance(params.instance_id) : null;
     const requestSize = JSON.stringify(params).length;
 
-    const result = await handler(params);
+    const result = await handler(params, inst);
 
     const durationMs = Date.now() - startMs;
     const responseText = result.content?.[0]?.text || '';
     const responseSize = responseText.length;
     const truncated = responseText.includes('[Response truncated at');
 
-    logToServer({
+    logToFile({
       timestamp: new Date().toISOString(),
       tool: toolName,
       instance: inst ? { id: inst.id, name: inst.name, url: inst.url } : null,
@@ -105,13 +108,14 @@ server.registerTool(
       order_by: z.string().optional().describe('Field to order by (e.g. sys_created_on)'),
       order_dir: z.enum(['asc', 'desc']).optional().default('asc').describe('Sort direction'),
       display_value: z.enum(['true', 'false', 'all']).optional().describe('Return display values instead of sys_ids. "all" returns both.'),
+      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
     },
   },
-  withLogging('sn_query', async ({ table, query, fields, limit, offset, order_by, order_dir, display_value }) => {
+  withLogging('sn_query', async ({ table, query, fields, limit, offset, order_by, order_dir, display_value }, inst) => {
     try {
       const result = await snClient.queryRecords({
         table, query, fields, limit, offset,
-        orderBy: order_by, orderDir: order_dir, displayValue: display_value,
+        orderBy: order_by, orderDir: order_dir, displayValue: display_value, inst,
       });
 
       if (result.status >= 400) {
@@ -146,12 +150,13 @@ server.registerTool(
       sys_id: z.string().describe('The sys_id of the record'),
       fields: z.string().optional().describe('Comma-separated field names to return'),
       display_value: z.enum(['true', 'false', 'all']).optional().describe('Return display values'),
+      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
     },
   },
-  withLogging('sn_get_record', async ({ table, sys_id, fields, display_value }) => {
+  withLogging('sn_get_record', async ({ table, sys_id, fields, display_value }, inst) => {
     try {
       const result = await snClient.getRecord({
-        table, sysId: sys_id, fields, displayValue: display_value,
+        table, sysId: sys_id, fields, displayValue: display_value, inst,
       });
 
       if (result.status >= 400) {
@@ -184,11 +189,12 @@ server.registerTool(
       table: z.string().describe('Table name (e.g. incident, change_request)'),
       fields: z.record(z.string(), z.any()).describe('Object of field name/value pairs to set on the new record'),
       transaction_scope: z.string().optional().describe('Scope sys_id to create within (sysparm_transaction_scope). Ensures artifact lands in the correct app scope. Get sys_id via sn_query on sys_scope table (e.g. query: scope=x_myapp).'),
+      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
     },
   },
-  withLogging('sn_create_record', async ({ table, fields, transaction_scope }) => {
+  withLogging('sn_create_record', async ({ table, fields, transaction_scope }, inst) => {
     try {
-      const result = await snClient.createRecord({ table, fields, transactionScope: transaction_scope });
+      const result = await snClient.createRecord({ table, fields, transactionScope: transaction_scope, inst });
 
       if (result.status >= 400) {
         return {
@@ -219,11 +225,12 @@ server.registerTool(
       sys_id: z.string().describe('The sys_id of the record to update'),
       fields: z.record(z.string(), z.any()).describe('Object of field name/value pairs to update'),
       transaction_scope: z.string().optional().describe('Scope sys_id to update within (sysparm_transaction_scope). Ensures change is captured in the correct app scope. Get sys_id via sn_query on sys_scope table (e.g. query: scope=x_myapp).'),
+      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
     },
   },
-  withLogging('sn_update_record', async ({ table, sys_id, fields, transaction_scope }) => {
+  withLogging('sn_update_record', async ({ table, sys_id, fields, transaction_scope }, inst) => {
     try {
-      const result = await snClient.updateRecord({ table, sysId: sys_id, fields, transactionScope: transaction_scope });
+      const result = await snClient.updateRecord({ table, sysId: sys_id, fields, transactionScope: transaction_scope, inst });
 
       if (result.status >= 400) {
         return {
@@ -251,11 +258,12 @@ server.registerTool(
     inputSchema: {
       table: z.string().describe('Table name'),
       sys_id: z.string().describe('The sys_id of the record to delete'),
+      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
     },
   },
-  withLogging('sn_delete_record', async ({ table, sys_id }) => {
+  withLogging('sn_delete_record', async ({ table, sys_id }, inst) => {
     try {
-      const result = await snClient.deleteRecord({ table, sysId: sys_id });
+      const result = await snClient.deleteRecord({ table, sysId: sys_id, inst });
 
       if (result.status >= 400) {
         return {
@@ -282,11 +290,12 @@ server.registerTool(
     description: 'Get the schema, columns, and relationships of a ServiceNow table. Useful for understanding table structure before querying.',
     inputSchema: {
       table: z.string().describe('Table name or label (e.g. incident, sys_user, Change Request)'),
+      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
     },
   },
-  withLogging('sn_table_structure', async ({ table }) => {
+  withLogging('sn_table_structure', async ({ table }, inst) => {
     try {
-      const result = await snClient.getTableStructure(table);
+      const result = await snClient.getTableStructure(table, inst);
 
       if (result.error) {
         return {
@@ -347,12 +356,13 @@ server.registerTool(
       script_include: z.string().describe('ScriptInclude name (e.g. x_snc_etools.SystemVersionUtils)'),
       method: z.string().describe('Method name to call'),
       params: z.record(z.string(), z.string()).optional().describe('Additional parameters to pass as key-value pairs'),
+      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
     },
   },
-  withLogging('sn_script_include', async ({ script_include, method, params }) => {
+  withLogging('sn_script_include', async ({ script_include, method, params }, inst) => {
     try {
       const result = await snClient.callScriptInclude({
-        scriptInclude: script_include, method, params,
+        scriptInclude: script_include, method, params, inst,
       });
 
       // Try to parse the XML answer attribute for cleaner output
@@ -397,11 +407,12 @@ server.registerTool(
       path: z.string().describe('API path starting with / (e.g. /api/now/table/incident, /api/now/stats/incident?sysparm_count=true)'),
       method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).optional().default('GET').describe('HTTP method'),
       body: z.any().optional().describe('Request body object (for POST/PUT/PATCH)'),
+      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
     },
   },
-  withLogging('sn_rest_api', async ({ path, method, body }) => {
+  withLogging('sn_rest_api', async ({ path, method, body }, inst) => {
     try {
-      const result = await snClient.restApiCall({ apiPath: path, httpMethod: method, body });
+      const result = await snClient.restApiCall({ apiPath: path, httpMethod: method, body, inst });
 
       if (result.status >= 400) {
         return {
@@ -424,34 +435,27 @@ server.registerTool(
 server.registerTool(
   'sn_instance_info',
   {
-    description: 'Get the current ServiceNow connection status, instance URL, auth method, and login state. Also lists all registered instances.',
+    description: 'List all registered ServiceNow instances with their connection status. The first instance is the default when no instance_id is provided to other tools.',
   },
   withLogging('sn_instance_info', async () => {
     try {
       const data = snAuth.getInstances();
-      const active = snAuth.getActiveInstance();
 
-      if (!active) {
+      if (!data.instances.length) {
         return {
           content: [{ type: 'text', text: 'No ServiceNow instance configured. Add one via http://localhost:3001' }],
           isError: true,
         };
       }
 
-      let text = `Active instance: ${active.name} (${active.id})\n`;
-      text += `URL:             ${active.url}\n`;
-      text += `Auth:            ${active.authType}\n`;
-      text += `Logged in:       ${snAuth.isLoggedIn(active)}\n`;
-
-      if (data.instances.length > 1) {
-        text += `\nAll instances (${data.instances.length}):\n`;
-        for (const inst of data.instances) {
-          const marker = inst.id === data.activeInstanceId ? '* ' : '  ';
-          const status = snAuth.isLoggedIn(inst) ? 'logged in' : (inst.authType === 'oauth' ? 'not logged in' : 'basic auth');
-          text += `${marker}[${inst.id}] ${inst.name} — ${inst.url} (${inst.authType}, ${status})\n`;
-        }
-        text += '\nUse sn_switch_instance to change the active instance.';
+      let text = `Registered instances (${data.instances.length}):\n`;
+      for (let i = 0; i < data.instances.length; i++) {
+        const inst = data.instances[i];
+        const status = snAuth.isLoggedIn(inst) ? 'logged in' : (inst.authType === 'oauth' ? 'not logged in' : 'basic auth');
+        const marker = i === 0 ? '* ' : '  ';
+        text += `${marker}[${inst.id}] ${inst.name} — ${inst.url} (${inst.authType}, ${status})\n`;
       }
+      text += '\n* = default (used when no instance_id is specified)';
 
       return { content: [{ type: 'text', text }] };
     } catch (err) {
@@ -461,45 +465,7 @@ server.registerTool(
 );
 
 // ============================================================
-// Tool 10: sn_switch_instance — Change the active instance
-// ============================================================
-server.registerTool(
-  'sn_switch_instance',
-  {
-    description: 'Switch the active ServiceNow instance used for all API calls. Use sn_instance_info to see available instance IDs.',
-    inputSchema: {
-      instance_id: z.string().describe('The instance ID to activate (e.g. "inst_abc123"). Use sn_instance_info to list available IDs.'),
-    },
-  },
-  withLogging('sn_switch_instance', async ({ instance_id }) => {
-    try {
-      const inst = snAuth.getInstance(instance_id);
-      if (!inst) {
-        const data = snAuth.getInstances();
-        const ids = data.instances.map(i => `  [${i.id}] ${i.name} — ${i.url}`).join('\n');
-        return {
-          content: [{ type: 'text', text: `Instance "${instance_id}" not found.\n\nAvailable instances:\n${ids}` }],
-          isError: true,
-        };
-      }
-
-      snAuth.setActiveInstance(instance_id);
-      const loggedIn = snAuth.isLoggedIn(inst);
-      let text = `Switched to: ${inst.name} (${inst.url})\nAuth: ${inst.authType}\nLogged in: ${loggedIn}`;
-      if (!loggedIn && inst.authType === 'oauth') {
-        text += '\n\nNote: not logged in. Visit http://localhost:3001 to authenticate this instance.';
-      }
-
-      log(`Switched active instance to: ${inst.name} (${inst.url})`);
-      return { content: [{ type: 'text', text }] };
-    } catch (err) {
-      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
-    }
-  })
-);
-
-// ============================================================
-// Tool 11: sn_switch_update_set — Switch the active update set
+// Tool 10: sn_switch_update_set — Switch the active update set
 // ============================================================
 server.registerTool(
   'sn_switch_update_set',
@@ -508,9 +474,10 @@ server.registerTool(
     inputSchema: {
       sys_id: z.string().optional().describe('sys_id of the target update set'),
       name: z.string().optional().describe('Name of the update set (must be "in progress"). Used if sys_id is not provided.'),
+      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
     },
   },
-  withLogging('sn_switch_update_set', async ({ sys_id, name }) => {
+  withLogging('sn_switch_update_set', async ({ sys_id, name }, inst) => {
     try {
       if (!sys_id && !name) {
         return {
@@ -519,7 +486,7 @@ server.registerTool(
         };
       }
 
-      const result = await snClient.switchUpdateSet({ sys_id, name });
+      const result = await snClient.switchUpdateSet({ sys_id, name, inst });
 
       if (result.status >= 400) {
         return {
@@ -544,10 +511,9 @@ server.registerTool(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  const active = snAuth.getActiveInstance();
+  const { instances } = snAuth.getInstances();
   log('ServiceNow MCP Server running on stdio');
-  log(`Active instance: ${active ? `${active.name} (${active.url})` : '(none configured)'}`);
-  log(`Auth: ${active?.authType || 'none'}`);
+  log(`Instances configured: ${instances.length}`);
 }
 
 main().catch((error) => {
