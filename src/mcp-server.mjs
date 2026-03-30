@@ -48,6 +48,48 @@ function writeConfirmation(verb, record) {
   return `Record ${verb} successfully.\n\n${JSON.stringify(summary, null, 2)}`;
 }
 
+// --- Instance resolution with fuzzy matching ---
+
+function resolveInstance(input) {
+  if (!input) return { inst: null, corrected: false };
+
+  const { instances } = snAuth.getInstances();
+
+  // 1. Exact ID match
+  const byId = instances.find(i => i.id === input);
+  if (byId) return { inst: byId, corrected: false };
+
+  const lower = input.toLowerCase();
+
+  // 2. Exact name match (case-insensitive)
+  const byExactName = instances.filter(i => i.name.toLowerCase() === lower);
+  if (byExactName.length === 1) {
+    return { inst: byExactName[0], corrected: false };
+  }
+
+  // 3. Fuzzy: instance name contains input, or input contains instance name
+  const byFuzzy = instances.filter(i =>
+    i.name.toLowerCase().includes(lower) || lower.includes(i.name.toLowerCase())
+  );
+  if (byFuzzy.length === 1) {
+    return { inst: byFuzzy[0], corrected: true,
+      correctionNote: `[Instance fuzzy-matched: "${input}" → "${byFuzzy[0].name}" (${byFuzzy[0].id})]` };
+  }
+
+  // 0 or multiple matches — return the full list so the caller can present it
+  return { inst: null, corrected: false, ambiguous: true, instances };
+}
+
+function instanceListText(instances) {
+  let text = 'Could not uniquely resolve the instance. Please specify one of the following:\n\n';
+  for (let i = 0; i < instances.length; i++) {
+    const inst = instances[i];
+    const status = snAuth.isLoggedIn(inst) ? 'logged in' : (inst.authType === 'oauth' ? 'not logged in' : 'basic auth');
+    text += `  [${inst.id}] ${inst.name} — ${inst.url} (${inst.authType}, ${status})\n`;
+  }
+  return text;
+}
+
 // --- Logging to disk (NDJSON) ---
 
 function logToFile(entry) {
@@ -58,10 +100,29 @@ function logToFile(entry) {
 function withLogging(toolName, handler) {
   return async (params) => {
     const startMs = Date.now();
-    const inst = params.instance_id ? snAuth.getInstance(params.instance_id) : null;
+
+    // Resolve instance (accepts id, name, or fuzzy name)
+    const resolution = params.instance_id ? resolveInstance(params.instance_id) : { inst: null, corrected: false };
+
+    if (resolution.ambiguous) {
+      const text = instanceListText(resolution.instances);
+      logToFile({
+        timestamp: new Date().toISOString(), tool: toolName, instance: null,
+        request: params, requestSize: JSON.stringify(params).length,
+        response: text, responseSize: text.length, truncated: false, isError: true, durationMs: 0,
+      });
+      return { content: [{ type: 'text', text }], isError: true };
+    }
+
+    const inst = resolution.inst;
     const requestSize = JSON.stringify(params).length;
 
     const result = await handler(params, inst);
+
+    // Prepend correction note if instance was fuzzy-resolved
+    if (resolution.corrected && result.content?.[0]?.type === 'text') {
+      result.content[0].text = resolution.correctionNote + '\n\n' + result.content[0].text;
+    }
 
     const durationMs = Date.now() - startMs;
     const responseText = result.content?.[0]?.text || '';
@@ -103,12 +164,12 @@ server.registerTool(
       table: z.string().describe('Table name (e.g. incident, sys_user, change_request, cmdb_ci)'),
       query: z.string().optional().describe('Encoded query filter (e.g. active=true^priority=1^short_descriptionLIKEnetwork)'),
       fields: z.string().optional().describe('Comma-separated field names to return (e.g. number,short_description,state)'),
-      limit: z.number().optional().default(20).describe('Max records to return (default: 20)'),
-      offset: z.number().optional().describe('Record offset for pagination'),
+      limit: z.union([z.number(), z.string().transform(v => parseInt(v, 10))]).optional().default(20).describe('Max records to return (default: 20)'),
+      offset: z.union([z.number(), z.string().transform(v => parseInt(v, 10))]).optional().describe('Record offset for pagination'),
       order_by: z.string().optional().describe('Field to order by (e.g. sys_created_on)'),
       order_dir: z.enum(['asc', 'desc']).optional().default('asc').describe('Sort direction'),
       display_value: z.enum(['true', 'false', 'all']).optional().describe('Return display values instead of sys_ids. "all" returns both.'),
-      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
+      instance_id: z.string().describe('Instance ID or name to target. Accepts exact ID (inst_…), exact name, or a partial/fuzzy name. Use sn_instance_info to list all instances.'),
     },
   },
   withLogging('sn_query', async ({ table, query, fields, limit, offset, order_by, order_dir, display_value }, inst) => {
@@ -150,7 +211,7 @@ server.registerTool(
       sys_id: z.string().describe('The sys_id of the record'),
       fields: z.string().optional().describe('Comma-separated field names to return'),
       display_value: z.enum(['true', 'false', 'all']).optional().describe('Return display values'),
-      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
+      instance_id: z.string().describe('Instance ID or name to target. Accepts exact ID (inst_…), exact name, or a partial/fuzzy name. Use sn_instance_info to list all instances.'),
     },
   },
   withLogging('sn_get_record', async ({ table, sys_id, fields, display_value }, inst) => {
@@ -189,7 +250,7 @@ server.registerTool(
       table: z.string().describe('Table name (e.g. incident, change_request)'),
       fields: z.record(z.string(), z.any()).describe('Object of field name/value pairs to set on the new record'),
       transaction_scope: z.string().optional().describe('Scope sys_id to create within (sysparm_transaction_scope). Ensures artifact lands in the correct app scope. Get sys_id via sn_query on sys_scope table (e.g. query: scope=x_myapp).'),
-      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
+      instance_id: z.string().describe('Instance ID or name to target. Accepts exact ID (inst_…), exact name, or a partial/fuzzy name. Use sn_instance_info to list all instances.'),
     },
   },
   withLogging('sn_create_record', async ({ table, fields, transaction_scope }, inst) => {
@@ -225,7 +286,7 @@ server.registerTool(
       sys_id: z.string().describe('The sys_id of the record to update'),
       fields: z.record(z.string(), z.any()).describe('Object of field name/value pairs to update'),
       transaction_scope: z.string().optional().describe('Scope sys_id to update within (sysparm_transaction_scope). Ensures change is captured in the correct app scope. Get sys_id via sn_query on sys_scope table (e.g. query: scope=x_myapp).'),
-      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
+      instance_id: z.string().describe('Instance ID or name to target. Accepts exact ID (inst_…), exact name, or a partial/fuzzy name. Use sn_instance_info to list all instances.'),
     },
   },
   withLogging('sn_update_record', async ({ table, sys_id, fields, transaction_scope }, inst) => {
@@ -258,7 +319,7 @@ server.registerTool(
     inputSchema: {
       table: z.string().describe('Table name'),
       sys_id: z.string().describe('The sys_id of the record to delete'),
-      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
+      instance_id: z.string().describe('Instance ID or name to target. Accepts exact ID (inst_…), exact name, or a partial/fuzzy name. Use sn_instance_info to list all instances.'),
     },
   },
   withLogging('sn_delete_record', async ({ table, sys_id }, inst) => {
@@ -290,7 +351,7 @@ server.registerTool(
     description: 'Get the schema, columns, and relationships of a ServiceNow table. Useful for understanding table structure before querying.',
     inputSchema: {
       table: z.string().describe('Table name or label (e.g. incident, sys_user, Change Request)'),
-      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
+      instance_id: z.string().describe('Instance ID or name to target. Accepts exact ID (inst_…), exact name, or a partial/fuzzy name. Use sn_instance_info to list all instances.'),
     },
   },
   withLogging('sn_table_structure', async ({ table }, inst) => {
@@ -356,7 +417,7 @@ server.registerTool(
       script_include: z.string().describe('ScriptInclude name (e.g. x_snc_etools.SystemVersionUtils)'),
       method: z.string().describe('Method name to call'),
       params: z.record(z.string(), z.string()).optional().describe('Additional parameters to pass as key-value pairs'),
-      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
+      instance_id: z.string().describe('Instance ID or name to target. Accepts exact ID (inst_…), exact name, or a partial/fuzzy name. Use sn_instance_info to list all instances.'),
     },
   },
   withLogging('sn_script_include', async ({ script_include, method, params }, inst) => {
@@ -407,7 +468,7 @@ server.registerTool(
       path: z.string().describe('API path starting with / (e.g. /api/now/table/incident, /api/now/stats/incident?sysparm_count=true)'),
       method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).optional().default('GET').describe('HTTP method'),
       body: z.any().optional().describe('Request body object (for POST/PUT/PATCH)'),
-      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
+      instance_id: z.string().describe('Instance ID or name to target. Accepts exact ID (inst_…), exact name, or a partial/fuzzy name. Use sn_instance_info to list all instances.'),
     },
   },
   withLogging('sn_rest_api', async ({ path, method, body }, inst) => {
@@ -474,7 +535,7 @@ server.registerTool(
     inputSchema: {
       sys_id: z.string().optional().describe('sys_id of the target update set'),
       name: z.string().optional().describe('Name of the update set (must be "in progress"). Used if sys_id is not provided.'),
-      instance_id: z.string().describe('Instance ID to target (from sn_instance_info).'),
+      instance_id: z.string().describe('Instance ID or name to target. Accepts exact ID (inst_…), exact name, or a partial/fuzzy name. Use sn_instance_info to list all instances.'),
     },
   },
   withLogging('sn_switch_update_set', async ({ sys_id, name }, inst) => {

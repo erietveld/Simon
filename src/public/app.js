@@ -9,6 +9,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
 
     if (tab.dataset.tab === 'instances') loadInstances();
+    if (tab.dataset.tab === 'tableexplorer') loadTableExplorerInstances();
     if (tab.dataset.tab === 'logs') {
       loadLogs();
       startLogsAutoRefresh();
@@ -204,6 +205,7 @@ async function saveInstance() {
 
 // Load instances on startup (default tab)
 loadInstances();
+loadTableExplorerInstances();
 
 // --- Name → URL auto-populate ---
 let lastAutoUrl = '';
@@ -250,9 +252,24 @@ function updateOAuthSetupLink() {
 }
 
 // --- Table Explorer ---
+async function loadTableExplorerInstances() {
+  const sel = document.getElementById('te-instance');
+  const current = sel.value;
+  try {
+    const res = await fetch('/api/instances');
+    const data = await res.json();
+    sel.innerHTML = '<option value="">Select instance…</option>' +
+      (data.instances || []).map(i => `<option value="${i.id}"${i.id === current ? ' selected' : ''}>${i.name}</option>`).join('');
+  } catch {
+    // leave as-is
+  }
+}
+
 async function searchTable() {
   const search = document.getElementById('te-search').value.trim();
   if (!search) return alert('Enter a table name or label');
+  const instanceId = document.getElementById('te-instance').value;
+  if (!instanceId) return alert('Select an instance first');
 
   const btn = document.getElementById('te-search-btn');
   btn.disabled = true;
@@ -262,7 +279,7 @@ async function searchTable() {
   document.getElementById('te-suggestions').classList.add('hidden');
 
   try {
-    const res = await fetch(`/api/table-structure/${encodeURIComponent(search)}`);
+    const res = await fetch(`/api/table-structure/${encodeURIComponent(search)}?instanceId=${encodeURIComponent(instanceId)}`);
     const data = await res.json();
 
     if (data.error === 'Table not found') {

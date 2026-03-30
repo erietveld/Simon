@@ -43,10 +43,15 @@
       <p style="font-size: 13px; color: #8b949e; margin-bottom: 12px;">
         Enter a table name (e.g. <code>incident</code>) or label (e.g. <code>Incident</code>) to explore its structure and relationships.
       </p>
-      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-        <input type="text" id="te-search" placeholder="Table name or label..." style="margin-bottom: 0;"
-          onkeydown="if(event.key==='Enter') searchTable()">
-        <button class="primary" id="te-search-btn" onclick="searchTable()" style="padding: 8px 20px; white-space: nowrap;">Search</button>
+      <div style="margin-bottom: 12px;">
+        <select id="te-instance" style="width: 100%; margin-bottom: 8px;">
+          <option value="">Select instance…</option>
+        </select>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="te-search" placeholder="Table name or label..." style="margin-bottom: 0; flex: 1;"
+            onkeydown="if(event.key==='Enter') searchTable()">
+          <button class="primary" id="te-search-btn" onclick="searchTable()" style="padding: 8px 20px; white-space: nowrap;">Search</button>
+        </div>
       </div>
       <div class="quick-actions">
         <button class="quick-btn" onclick="searchTableByName('incident')">incident</button>

@@ -246,7 +246,9 @@ app.post('/api/scriptinclude', async (req, res) => {
 // --- API: fetch table structure and relationships ---
 app.get('/api/table-structure/:tableName', async (req, res) => {
   try {
-    const result = await snClient.getTableStructure(req.params.tableName);
+    const inst = req.query.instanceId ? auth.getInstance(req.query.instanceId) : null;
+    if (!inst) return res.status(400).json({ error: 'instanceId is required' });
+    const result = await snClient.getTableStructure(req.params.tableName, inst);
     res.json(result);
   } catch (err) {
     console.error('[Table Structure Error]', err);

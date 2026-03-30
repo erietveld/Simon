@@ -49,6 +49,19 @@ Message types: `conversation` (tool output), null (regular turn)
 
 ## Useful Debug Queries
 
+### Find the most recently run agent (across all agents)
+```
+sn_query:
+  table: sn_aia_execution_plan
+  query: (no filter)
+  fields: sys_id,agent,state,state_reason,objective,sys_created_on
+  order_by: sys_created_on
+  order_dir: desc
+  limit: 1
+  display_value: all
+```
+> `display_value: all` on `agent` returns the agent name directly — no second lookup needed.
+
 ### Find all runs for an agent
 ```
 sn_query:
@@ -74,15 +87,8 @@ sn_query:
 ```
 
 ### Find messages in a run
-```
-sn_query:
-  table: sn_aia_message
-  query: execution_plan=<sn_aia_execution_plan_sys_id>
-  fields: sys_id,role,type,user_message,message,message_sequence,sys_created_on
-  order_by: message_sequence
-  display_value: all
-```
-> Fields are `message` and `user_message` — there is no `content` field.
+
+See the `sn_aia_message Field Names` section above for the correct query and field names.
 
 ### Find all LLM calls in a run
 ```

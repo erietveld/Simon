@@ -12,7 +12,8 @@ This guide walks you through installing Simon from scratch, step by step. No pri
 |----------|---------|
 | **Visual Studio Code** | Code editor — also where you will chat with Claude |
 | **Claude Code extension** | Brings Claude AI directly into VS Code |
-| **Node.js** | Runs the Simon server locally (Claude will help you install this) |
+| **Git** | Downloads Simon from GitHub (and keeps it up to date) |
+| **Node.js + npm** | Runs the Simon server locally — npm is included with Node.js |
 | **Simon** | The tool itself — connects Claude to your ServiceNow instance |
 
 ---
@@ -37,7 +38,29 @@ VS Code is the application you will use to run Simon and talk to Claude.
 
 ---
 
-## Step 2 — Get the Simon code
+## Step 2 — Install Git
+
+Git is required to download Simon. Check whether it is already installed first:
+
+1. In VS Code, open a terminal: menu **Terminal → New Terminal**
+2. Run: `git --version`
+3. If you see a version number (e.g. `git version 2.43.0`), Git is installed — skip to Step 3.
+
+If Git is not installed:
+
+### Windows
+1. Go to [https://git-scm.com/download/win](https://git-scm.com/download/win) — the download starts automatically
+2. Run the installer and accept all default options
+3. Close and reopen the VS Code terminal, then run `git --version` to confirm
+
+### Mac
+1. Run `git --version` in the terminal — macOS will offer to install the **Xcode Command Line Tools** automatically
+2. Click **Install** in the dialog that appears and wait for it to finish
+3. Run `git --version` again to confirm
+
+---
+
+## Step 3 — Get the Simon code
 
 You will download a copy of Simon directly inside VS Code — no GitHub account required.
 
@@ -51,13 +74,11 @@ You will download a copy of Simon directly inside VS Code — no GitHub account 
 5. VS Code will ask where to save the folder — choose a location you can find easily (e.g. your Desktop or Documents)
 6. When asked *"Would you like to open the cloned repository?"*, click **Open**
 
-> **If VS Code says Git is not installed:** follow the prompt to install it, then repeat from step 2.
-
 You should now see the Simon project files in the left-hand panel.
 
 ---
 
-## Step 3 — Install the Claude Code extension
+## Step 4 — Install the Claude Code extension
 
 1. Click the **Extensions** icon in the left sidebar (it looks like four squares)
 2. In the search box, type `Claude Code`
@@ -73,24 +94,36 @@ You should now see the Simon project files in the left-hand panel.
 
 ---
 
-## Step 4 — Install Node.js (with Claude's help)
+## Step 5 — Install Node.js
 
-Node.js is the engine that runs the Simon server. Now that Claude is available, ask it to guide you through the installation.
+Node.js is the engine that runs the Simon server. **npm** (used in Step 6) is included with Node.js — you do not need to install it separately.
 
-Open the Claude chat panel in VS Code and send this prompt:
+First, check if Node.js is already installed:
 
-> **"I need to install Node.js version 20 or higher on my [Windows / Mac] computer. Please give me step-by-step instructions, check if it installed correctly, and let me know when I'm done."**
+1. Open a terminal in VS Code (**Terminal → New Terminal**)
+2. Run: `node --version`
+3. If you see `v20` or higher, you're done — skip to Step 6.
 
-Follow Claude's instructions. When Node.js is installed correctly, Claude will confirm and you can move to the next step.
+If Node.js is not installed:
 
-> **Why this approach?** Claude can adapt its instructions to your specific system, handle any errors that come up, and confirm the installation succeeded — much more reliable than a static guide.
+### Windows
+1. Go to [https://nodejs.org](https://nodejs.org) and click **Download Node.js (LTS)**
+2. Run the installer and accept all defaults
+3. Close and reopen the terminal, then run `node --version` to confirm
+
+### Mac
+1. Go to [https://nodejs.org](https://nodejs.org) and click **Download Node.js (LTS)**
+2. Run the `.pkg` installer and follow the prompts
+3. Close and reopen the terminal, then run `node --version` to confirm
+
+> **Alternatively,** now that Claude is available you can ask it: *"I need to install Node.js version 20 or higher on my [Windows / Mac] computer. Please give me step-by-step instructions and confirm it installed correctly."*
 
 ---
 
-## Step 5 — Start the Simon server
+## Step 6 — Start the Simon server
 
 1. In VS Code, open a terminal: menu **Terminal → New Terminal** (or press `` Ctrl+` `` on Windows, `` Cmd+` `` on Mac)
-2. Make sure the terminal shows the Simon folder path (e.g. `C:\Users\you\Documents\Simon` or `~/Documents/Simon`). If it does not, something went wrong in Step 2 — ask Claude for help.
+2. Make sure the terminal shows the Simon folder path (e.g. `C:\Users\you\Documents\Simon` or `~/Documents/Simon`). If it does not, something went wrong in Step 3 — ask Claude for help.
 3. Run this command to install Simon's dependencies:
    ```
    npm install
@@ -108,7 +141,7 @@ Follow Claude's instructions. When Node.js is installed correctly, Claude will c
 
 ---
 
-## Step 6 — Add your ServiceNow instance
+## Step 7 — Add your ServiceNow instance
 
 1. In the Simon web interface at [http://localhost:3001](http://localhost:3001), go to the **Instances** tab
 2. Click **Add Instance**
@@ -124,7 +157,7 @@ Follow Claude's instructions. When Node.js is installed correctly, Claude will c
 
 ---
 
-## Step 7 — Reload VS Code so Claude can see Simon's tools
+## Step 8 — Reload VS Code so Claude can see Simon's tools
 
 > **This step is easy to miss and will cause confusion if skipped.**
 
@@ -148,9 +181,9 @@ If Claude says it has no ServiceNow tools, see [Troubleshooting](#troubleshootin
 
 ---
 
-## Step 8 — Try it out
+## Step 9 — Try it out
 
-Make sure the Simon server is still running (the terminal from Step 5 should still be open). Then open a Claude chat and try these prompts:
+Make sure the Simon server is still running (the terminal from Step 6 should still be open). Then open a Claude chat and try these prompts:
 
 **Prompt 1 — Check what's on your plate:**
 ```
@@ -176,11 +209,14 @@ Once installed, your daily routine is:
 
 ## Troubleshooting
 
-### "Git is not installed" when cloning
-VS Code will offer to install Git for you — click the link it provides and follow the installer. Then return to Step 2.
+### Git is not installed
+Follow the instructions in Step 2 to install Git for your platform, then return to Step 3 to clone Simon.
 
-### `npm install` or `npm start` fails with "command not found"
-Node.js did not install correctly. Go back to Step 4 and ask Claude to help diagnose the issue.
+### `npm`: command not found
+npm is included with Node.js — if npm is missing, Node.js is not installed or not on your PATH. Follow the instructions in Step 5 to install Node.js, then reopen the terminal and try again.
+
+### `node`: command not found
+Node.js is not installed. Follow the instructions in Step 5.
 
 ### `npm start` fails with "address already in use"
 Port 3001 is already in use (possibly an earlier Simon session). Either close the other terminal running Simon, or ask Claude: *"Port 3001 is in use on my computer — how do I find and stop the process using it?"*
@@ -189,13 +225,13 @@ Port 3001 is already in use (possibly an earlier Simon session). Either close th
 Check the following:
 - The Simon server (`npm start`) is running in a terminal
 - You opened VS Code **from the Simon project folder** (check the title bar shows the Simon folder)
-- You reloaded the window (Step 7) after opening the project — if not, do it now
+- You reloaded the window (Step 8) after opening the project — if not, do it now
 - Try reloading the window once more: `Ctrl+Shift+P` → **Developer: Reload Window**
 
 If still not working, ask Claude: *"My Simon MCP server is not loading. The project is at [folder path]. Can you help me diagnose why Claude Code is not picking up the MCP tools from .mcp.json?"*
 
 ### Claude keeps asking for instance credentials
-You need to add your instance in the Simon web UI first — see Step 6. The web server must also be running (`npm start`).
+You need to add your instance in the Simon web UI first — see Step 7. The web server must also be running (`npm start`).
 
 ### Need to restart from scratch
-If something went badly wrong, delete the Simon folder, go back to Step 2, and clone it again. Your `instances.json` will be lost (you will need to re-add your instance), but nothing else is affected.
+If something went badly wrong, delete the Simon folder, go back to Step 3, and clone it again. Your `instances.json` will be lost (you will need to re-add your instance), but nothing else is affected.

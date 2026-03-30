@@ -39,3 +39,24 @@ grep -rE '\b(INC|CHG|RITM|PRB|TASK|REQ|SCTASK)\d{7}\b' . --include="*.md" --excl
 ```
 
 **If found:** remove the data from the file. If the information was useful context, rephrase it as a generic pattern or observation rather than copying live data.
+
+## Manage Hint File Size
+
+Hint files should remain focused and scannable. A file that grows too large becomes harder to use than no hint at all.
+
+**When to split:** if a hint file exceeds ~150 lines, review whether it covers more than one distinct topic. If it does, split it.
+
+**How to check:**
+
+```bash
+wc -l hints/*.md
+```
+
+**How to split:**
+
+1. Identify the natural seam — usually two separate tables, workflows, or API areas that happen to share a file.
+2. Create a new file `hints/<new-topic>.md` for one of the topics, following the standard template.
+3. Remove the migrated content from the original file and update its scope in the header.
+4. Update `hints/INDEX.md` to add the new entry (and revise the description of the original if its scope narrowed).
+
+**If the file is large but cohesive** (all one topic, just detailed), trim it instead: collapse redundant examples, remove exploration dead-ends that are already covered by a single note in the Gotchas section, and keep only the minimal working pattern.

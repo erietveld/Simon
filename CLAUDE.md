@@ -58,6 +58,7 @@ After completing any task that required **3 or more attempts** to figure out the
 - Found a key navigation URL or admin console path after searching
 - Discovered how a ServiceNow API or feature actually works (e.g. publishing, workflow triggers, ACL behaviour)
 - Hit a dead end (API limitation, ACL block, unsupported pattern) — document what was tried and why it failed
+- An existing hint covered a specific case but a more general variant still required exploration (e.g., existing query required a known sys_id, but the task needed "find the most recent across all agents" with no known input) — add the general variant to the existing hint file
 
 > **Hints vs memory:** ServiceNow how-to knowledge — query patterns, API behaviour, workarounds, gotchas — belongs in a hint file, NOT in Claude's auto-memory. Memory is for project-level context (structure, preferences). Hints are for reusable ServiceNow knowledge.
 
