@@ -40,12 +40,14 @@ src/mcp-server.mjs  — MCP stdio server (ESM, imports CJS via createRequire)
 
 ### Always check hints before starting a ServiceNow task
 
-Before performing any non-trivial ServiceNow operation, **read `hints/INDEX.md`** and check if a relevant hint file exists. If it does, read it before issuing any queries. This avoids re-discovering things through many trial-and-error queries.
+**REQUIRED: Before calling any MCP ServiceNow tool, ensure `hints/INDEX.md` has been read in this conversation.** If it hasn't, read it first. If a relevant hint file exists and hasn't been read yet, read it before issuing any queries.
 
 ```
-Read: hints/INDEX.md        ← check what hints exist
-Read: hints/<topic>.md      ← read the relevant hint(s)
+Read: hints/INDEX.md        ← if not already read this conversation
+Read: hints/<topic>.md      ← if not already read this conversation
 ```
+
+Skipping this step and querying blindly wastes round-trips on wrong tables and incorrect field names.
 
 ### When to write a hint
 

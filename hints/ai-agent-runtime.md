@@ -49,11 +49,22 @@ Message types: `conversation` (tool output), null (regular turn)
 
 ## Useful Debug Queries
 
+### Run types in sn_aia_execution_plan
+
+`sn_aia_execution_plan` is shared between two run types:
+
+| Run type | `agent` | `team` | `usecase` |
+|---|---|---|---|
+| Single-agent run | populated | empty | empty |
+| Team/usecase run | **empty** | populated | populated |
+
+Filter by `agentISNOTEMPTY` to scope queries to single-agent runs only.
+
 ### Find the most recently run agent (across all agents)
 ```
 sn_query:
   table: sn_aia_execution_plan
-  query: (no filter)
+  query: agentISNOTEMPTY
   fields: sys_id,agent,state,state_reason,objective,sys_created_on
   order_by: sys_created_on
   order_dir: desc
@@ -61,6 +72,7 @@ sn_query:
   display_value: all
 ```
 > `display_value: all` on `agent` returns the agent name directly — no second lookup needed.
+> Without `agentISNOTEMPTY`, ghost/stuck runs with no agent reference can surface first and send you down extra queries.
 
 ### Find all runs for an agent
 ```
