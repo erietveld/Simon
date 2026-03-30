@@ -1,6 +1,18 @@
 # Simon
 
-ServiceNow Integrated MCP Operations Node — ServiceNow development and admin powertool. Provides a local Express web server for manual API testing and an MCP server that gives Claude Code native ServiceNow tools.
+**S**erviceNow **I**ntegrated **M**CP **O**perations **N**ode — AI assistant for ServiceNow operations.
+
+Simon connects Claude Code directly to your ServiceNow instance. No copy-paste. No plumbing. Describe what you need — query data, configure AI Agents, populate demo environments, inspect logs — and get the result.
+
+**Built for Solution Consultants** who build and manage ServiceNow demo instances, but useful for any developer or admin who wants an agentic layer on top of their environment.
+
+---
+
+Think about how work gets done on an instance today. You need to know which incidents were re-opened last week, or why the Teams Virtual Agent is throwing errors. So you Slack someone who knows — or you ask ChatGPT, get a GlideRecord script back, then go find a background script runner and interpret the results yourself.
+
+Simon is Era 3: you describe what you need, Simon connects directly to your instance, queries the right tables, and brings back the answer.
+
+---
 
 ## New to this? Start here
 
@@ -47,10 +59,18 @@ Your credentials are stored locally in `instances.json` (gitignored — never co
 
 The MCP server registers automatically via `.mcp.json`. Start a Claude Code session in this project directory and the ServiceNow tools will be available immediately.
 
+## What you can do with Simon
+
+- **Query and manage data** — "Show me all incidents re-opened in the last 7 days, grouped by assignment group"
+- **Configure AI Agents** — set up tools, topics, and Now Assist skills through natural language
+- **Debug AI features** — inspect LLM logs, trace AI Agent execution, find what's failing and why
+- **Populate demo environments** — build out customer storylines and demo data without clicking through forms
+- **Multi-instance operations** — connect to multiple DemoHub instances simultaneously (acme, globalbank, etc.) and compare or sync configs without switching context
+
 ## Usage
 
 ### Web UI (`http://localhost:3001`)
-Use the browser UI to manually test ServiceNow REST API calls and manage instances.
+Manage instances and manually test ServiceNow REST API calls.
 
 ### Claude Code (MCP tools)
 When working in Claude Code, the following tools are available directly in the conversation:
@@ -66,11 +86,12 @@ When working in Claude Code, the following tools are available directly in the c
 | `sn_script_include` | Call a Script Include via GlideAjax |
 | `sn_rest_api` | Generic REST API call |
 | `sn_instance_info` | List configured instances |
-| `sn_switch_instance` | Switch the active instance |
 | `sn_switch_update_set` | Switch the active update set |
 
+Every tool takes an `instance_id` parameter — you can operate against multiple instances in the same conversation without switching context.
+
 ### Hints
-`hints/` contains query patterns and gotchas for common ServiceNow tasks accumulated over time. Check `hints/INDEX.md` before starting a non-trivial task — it often saves a lot of trial and error.
+`hints/` is an adaptive knowledge library that grows over time. It captures the right query patterns, table relationships, and gotchas for your environment so Simon doesn't repeat discovery work across sessions. Check `hints/INDEX.md` before starting any non-trivial task.
 
 ## Optional configuration
 
