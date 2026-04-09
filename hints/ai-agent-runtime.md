@@ -35,13 +35,12 @@ sn_aia_execution_plan
 
 The correct fields are `message` and `user_message` — NOT `content` (that field does not exist):
 
-```
-sn_query:
-  table: sn_aia_message
-  query: execution_plan=<sn_aia_execution_plan_sys_id>
-  fields: sys_id,role,type,user_message,message,message_sequence,sys_created_on
-  order_by: message_sequence
-  display_value: all
+```bash
+simon query sn_aia_message \
+  --query "execution_plan=<sn_aia_execution_plan_sys_id>" \
+  --fields "sys_id,role,type,user_message,message,message_sequence,sys_created_on" \
+  --order-by message_sequence \
+  --display-value all
 ```
 
 Message roles: `user`, `user_profile`, `agent`
@@ -61,41 +60,35 @@ Message types: `conversation` (tool output), null (regular turn)
 Filter by `agentISNOTEMPTY` to scope queries to single-agent runs only.
 
 ### Find the most recently run agent (across all agents)
-```
-sn_query:
-  table: sn_aia_execution_plan
-  query: agentISNOTEMPTY
-  fields: sys_id,agent,state,state_reason,objective,sys_created_on
-  order_by: sys_created_on
-  order_dir: desc
-  limit: 1
-  display_value: all
+```bash
+simon query sn_aia_execution_plan \
+  --query "agentISNOTEMPTY" \
+  --fields "sys_id,agent,state,state_reason,objective,sys_created_on" \
+  --order-by sys_created_on --order-dir desc --limit 1 \
+  --display-value all
 ```
 > `display_value: all` on `agent` returns the agent name directly — no second lookup needed.
 > Without `agentISNOTEMPTY`, ghost/stuck runs with no agent reference can surface first and send you down extra queries.
 
 ### Find all runs for an agent
-```
-sn_query:
-  table: sn_aia_execution_plan          ← use this, NOT sn_aia_execution_task (no agent field)
-  query: agent=<sn_aia_agent_sys_id>
-  fields: sys_id,state,state_reason,objective,sys_created_on
-  order_by: sys_created_on
-  order_dir: desc
-  limit: 5
-  display_value: all
+```bash
+# use sn_aia_execution_plan, NOT sn_aia_execution_task (no agent field)
+simon query sn_aia_execution_plan \
+  --query "agent=<sn_aia_agent_sys_id>" \
+  --fields "sys_id,state,state_reason,objective,sys_created_on" \
+  --order-by sys_created_on --order-dir desc --limit 5 \
+  --display-value all
 ```
 > `sn_aia_execution_task` does NOT have an `agent` field — querying it by agent causes a 403.
 > `sn_aia_execution_plan` has the `agent` reference and is the correct entry point.
 > Timestamps are stored in UTC — the instance may be in a different timezone.
 
 ### Find tool calls within a run
-```
-sn_query:
-  table: sn_aia_tools_execution
-  query: execution_task=<sn_aia_execution_task_sys_id>
-  fields: sys_id,tool,status,input,output,sys_created_on
-  order_by: sys_created_on
+```bash
+simon query sn_aia_tools_execution \
+  --query "execution_task=<sn_aia_execution_task_sys_id>" \
+  --fields "sys_id,tool,status,input,output,sys_created_on" \
+  --order-by sys_created_on
 ```
 
 ### Find messages in a run
@@ -103,13 +96,12 @@ sn_query:
 See the `sn_aia_message Field Names` section above for the correct query and field names.
 
 ### Find all LLM calls in a run
-```
-sn_query:
-  table: sn_aia_execution_task
-  query: execution_plan=<plan_sys_id>^type=gen_ai
-  fields: sys_id,type,status,output,sys_created_on
-  order_by: sys_created_on
-  display_value: all
+```bash
+simon query sn_aia_execution_task \
+  --query "execution_plan=<plan_sys_id>^type=gen_ai" \
+  --fields "sys_id,type,status,output,sys_created_on" \
+  --order-by sys_created_on \
+  --display-value all
 ```
 The `output` JSON of each gen_ai task contains a `"URL"` key like `/sys_gen_ai_log_metadata.do?sys_id=<metadata_sys_id>`.
 Use that sys_id to fetch `sys_gen_ai_log_metadata`, then follow its `gen_ai_log_id` to `sys_generative_ai_log` for the full prompt/response.
@@ -118,19 +110,15 @@ Use that sys_id to fetch `sys_gen_ai_log_metadata`, then follow its `gen_ai_log_
 ```
 # 1. Get gen_ai_log_metadata sys_id from sn_aia_execution_task.output (URL field)
 # 2. Look up gen_ai_log_id
-sn_get_record:
-  table: sys_gen_ai_log_metadata
-  sys_id: <metadata_sys_id>
-  fields: gen_ai_log_id,model_name,prompt_token_count,response_token_count,time_taken
+simon get sys_gen_ai_log_metadata <metadata_sys_id> \
+  --fields "gen_ai_log_id,model_name,prompt_token_count,response_token_count,time_taken"
 
 # 3. Fetch the raw log
-sn_get_record:
-  table: sys_generative_ai_log
-  sys_id: <gen_ai_log_id>
-  fields: prompt,response,prompt_token_count,response_token_count,time_taken,model_name,started_at,completed_at
+simon get sys_generative_ai_log <gen_ai_log_id> \
+  --fields "prompt,response,prompt_token_count,response_token_count,time_taken,model_name,started_at,completed_at"
 ```
 > The `prompt` field is a JSON string: `{"prompt":[{"role":"system","content":"..."},{"role":"user",...},...]}`
-> The system prompt alone is typically **40–50 KB**. The MCP tool caps responses at ~20K chars, so you will get a truncated result.
+> The system prompt alone is typically **40–50 KB**. The CLI caps large responses at 148 lines and writes the rest to a temp file.
 > **To get the full prompt**: use `curl` directly with a refreshed OAuth token and pipe through Python to extract `prompt[0].content`:
 > ```bash
 > curl -s -H "Authorization: Bearer <token>" \
@@ -164,12 +152,11 @@ The same data is fully accessible via the Table API using the tables above. The 
 When a run terminates immediately with `state_reason=security_violation`, the cause is an **Access Verification** pre-check that runs before any tool executes.
 
 ### How to diagnose
-```
-sn_query:
-  table: sn_aia_execution_task
-  query: execution_plan=<execution_plan_sys_id>
-  fields: sys_id,type,status,output,sys_created_on
-  display_value: all
+```bash
+simon query sn_aia_execution_task \
+  --query "execution_plan=<execution_plan_sys_id>" \
+  --fields "sys_id,type,status,output,sys_created_on" \
+  --display-value all
 ```
 Look for `type=access_verification`. The `output` field is JSON listing every resource (agent + tools) with an `isAccessAllowed` boolean per item.
 

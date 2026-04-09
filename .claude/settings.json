@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(simon --help)",
+      "Bash(simon api:*)",
+      "Read(//tmp/**)",
+      "Bash(simon query:*)",
+      "Bash(node src/cli.mjs --help)",
+      "Bash(node src/cli.mjs query --help)",
+      "Read(//Users/eric.rietveld/My Drive/git/Simon/**)"
+    ],
+    "additionalDirectories": [
+      "/tmp",
+      "/private/tmp"
+    ]
+  }
+}

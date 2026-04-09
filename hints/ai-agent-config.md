@@ -94,21 +94,19 @@ sn_aia_agent                        ← agent definition (name, instructions, ro
 ## Efficient Query Patterns
 
 ### Find agent config by sys_user
-```
-sn_query:
-  table: sn_aia_agent_config
-  query: run_as_user=<sys_user_sys_id>
-  fields: sys_id,agent,run_as_user,active,public
-  display_value: all
+```bash
+simon query sn_aia_agent_config \
+  --query "run_as_user=<sys_user_sys_id>" \
+  --fields "sys_id,agent,run_as_user,active,public" \
+  --display-value all
 ```
 
 ### Find tools assigned to an agent
-```
-sn_query:
-  table: sn_aia_agent_tool_m2m
-  query: agent=<sn_aia_agent_sys_id>
-  fields: sys_id,name,tool,active,description,execution_mode,inputs
-  display_value: all
+```bash
+simon query sn_aia_agent_tool_m2m \
+  --query "agent=<sn_aia_agent_sys_id>" \
+  --fields "sys_id,name,tool,active,description,execution_mode,inputs" \
+  --display-value all
 ```
 
 ### role vs instructions fields

@@ -11,18 +11,16 @@
 
 To find apps matching a creator or scope pattern:
 
-```
-sn_query:
-  table: sys_app
-  query: sys_created_byLIKEuser^ORscopeLIKEuser
-  fields: name, scope, sys_created_by, version
+```bash
+simon query sys_app \
+  --query "sys_created_byLIKEuser^ORscopeLIKEuser" \
+  --fields "name,scope,sys_created_by,version"
 ```
 
 To count artifacts an app contains before deleting:
 
-```
-sn_rest_api:
-  path: /api/now/stats/sys_metadata?sysparm_query=sys_scope%3D<APP_SYS_ID>%5Esys_class_name%21%3Dsys_metadata_delete&sysparm_count=true
+```bash
+simon api "/api/now/stats/sys_metadata?sysparm_query=sys_scope%3D<APP_SYS_ID>%5Esys_class_name%21%3Dsys_metadata_delete&sysparm_count=true"
 ```
 
 ## How to Delete (with full cascade)
@@ -71,7 +69,7 @@ if (failed.length > 0) {
 
 ## Gotchas
 
-- **`sn_delete_record` (REST Table API) does NOT cascade** — it only removes the `sys_app` row, leaving all artifacts orphaned in `sys_metadata`.
+- **`simon delete` / REST Table API DELETE does NOT cascade** — it only removes the `sys_app` row, leaving all artifacts orphaned in `sys_metadata`.
 - The UI delete button (`delete_app_dialog`) calls `gDeleteAppDialog.deleteApp()` — a compiled platform JS function, not exposed via REST.
 - The `sn_cicd/app_repo/install` endpoint exists and accepts POST but has no uninstall/delete counterpart.
 - The `sys_script_execution.do` processor exists but requires a browser session (CSRF token); it returns HTML when called via REST.

@@ -16,34 +16,30 @@ User gets "I'm having technical issues and won't be able to continue this conver
 ## Efficient Diagnostic Approach
 
 ### Step 1 — Find the user's failing conversations
-```
-sn_query:
-  table: sys_cs_conversation
-  query: sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()
-  fields: sys_id, name, device_type, topic_definition_name, state, consumer, sys_created_on
-  order_by: sys_created_on
-  order_dir: desc
-  display_value: all
+```bash
+simon query sys_cs_conversation \
+  --query "sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()" \
+  --fields "sys_id,name,device_type,topic_definition_name,state,consumer,sys_created_on" \
+  --order-by sys_created_on --order-dir desc \
+  --display-value all
 ```
 Look for `state=Faulted` + `device_type=Teams`.
 
 ### Step 2 — Check the consumer records for the affected user
-```
-sn_query:
-  table: sys_cs_consumer
-  query: user_id=<sys_user_sys_id>
-  fields: sys_id, name, inactive, consumer_account, sys_created_on, sys_created_by, sys_updated_on, sys_updated_by
-  display_value: all
+```bash
+simon query sys_cs_consumer \
+  --query "user_id=<sys_user_sys_id>" \
+  --fields "sys_id,name,inactive,consumer_account,sys_created_on,sys_created_by,sys_updated_on,sys_updated_by" \
+  --display-value all
 ```
 **Red flag:** Multiple records, newer ones have `inactive=true`, set by `system` ~31 minutes after creation by `guest`.
 
 ### Step 3 — Check the consumer_account pointer
-```
-sn_query:
-  table: sys_cs_consumer_account
-  query: consumer=<any_of_the_consumer_sys_ids>
-  fields: sys_id, consumer, vendor_user_id, provider_application, sys_updated_on, sys_updated_by
-  display_value: all
+```bash
+simon query sys_cs_consumer_account \
+  --query "consumer=<any_of_the_consumer_sys_ids>" \
+  --fields "sys_id,consumer,vendor_user_id,provider_application,sys_updated_on,sys_updated_by" \
+  --display-value all
 ```
 **Red flag:** `consumer` field points to an **inactive** consumer record.
 
@@ -57,7 +53,7 @@ The result: the `consumer_account.consumer` pointer gets updated to each new dup
 
 ## Fix
 
-**The REST Table API silently ignores writes to `sys_cs_consumer` and `sys_cs_consumer_account`** — `sn_update_record` returns success but the record does not change. No ACLs or business rules block it; it is a Java-layer platform protection. Use a background script instead.
+**The REST Table API silently ignores writes to `sys_cs_consumer` and `sys_cs_consumer_account`** — `simon update` returns success but the record does not change. No ACLs or business rules block it; it is a Java-layer platform protection. Use a background script instead.
 
 Run the following at `https://<instance>.service-now.com/sys.scripts.do`:
 

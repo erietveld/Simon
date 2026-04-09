@@ -55,9 +55,8 @@ The `@fluent-import-html WARNING` comment is the marker that this file was gener
 
 ## Efficient query to find all pages in a scoped app
 
-```
-sn_query:
-  table: sys_ui_page
-  query: sys_scope.scope=<scope_prefix>
-  fields: name, title, sys_scope, sys_id
+```bash
+simon query sys_ui_page \
+  --query "sys_scope.scope=<scope_prefix>" \
+  --fields "name,title,sys_scope,sys_id"
 ```

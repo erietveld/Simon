@@ -4,6 +4,9 @@
   "description": "ServiceNow development powertool",
   "license": "MIT",
   "main": "src/server.js",
+  "bin": {
+    "simon": "src/cli.mjs"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js"
@@ -12,8 +15,6 @@
     "node": ">=20.12.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.0",
-    "express": "^4.21.0",
-    "zod": "^4.3.6"
+    "express": "^4.21.0"
   }
 }

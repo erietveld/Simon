@@ -25,6 +25,10 @@ This file is the registry of all available hint files. Read the relevant hint fi
 | [app-install-upgrade.md](app-install-upgrade.md) | Bypassing the Plugin Manager Suite UI to install/upgrade a single store app; CI/CD REST API approach; Now Assist Skill Kit suite details | Installing or upgrading a store app when suite siblings are blocked |
 | [suite-member-management.md](suite-member-management.md) | Removing apps from a suite (`sys_suite_config_app_version_m2m`); cross-scope ACL workaround via temp Script Include in `sn_appclient` scope; bulk upgrade all suite members via CI/CD | Removing suite members, bulk-upgrading a Now Assist suite |
 | [instance-performance-tuning.md](instance-performance-tuning.md) | How to diagnose and fix slow POV instances; standard playbook for disabling EM/ITOM/CMDB jobs; syslog_transaction timing approach; run_period format; stacking job detection | Improving instance performance, reducing background job load |
+| [plugin-store-sync.md](plugin-store-sync.md) | Plugin/store app sync: last sync time via `sn_appclient.apps_last_sync_time` sys_property, how to trigger live sync via `POST /api/sn_appclient/appmanager/apps?tab_context=updates` | Checking when plugins last synced, forcing a plugin catalog refresh |
+| [mfa-enforcement.md](mfa-enforcement.md) | MFA setup: per-user enforcement table, role-based triggers, group exemptions, background script workaround for changing enforced status, ACL-blocked device table | Managing MFA enforcement, exempting users, clearing MFA state |
+| [build-agent-llm.md](build-agent-llm.md) | Build Agent (`sn_build_agent`) LLM identification; dead ends in provider config tables; log-based approach via `sys_gen_ai_log_metadata` | Finding what LLM Build Agent is using, researching AI Agent Studio's chat assistant |
+| [autonomous-workforce.md](autonomous-workforce.md) | Autonomous workforce / AI workers: `sn_aia_worker`, `sn_aia_worker_m2m`; terminology (AI worker vs AI specialist); version gate ZP8/AP1 + YP13; SKU requirements | Querying or configuring AI workers (AI specialists); checking if the feature is available on an instance |
 
 ---
 

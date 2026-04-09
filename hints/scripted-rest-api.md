@@ -59,13 +59,11 @@ Required fields:
 
 ## Calling the API
 
-Use `sn_rest_api` tool with method POST and path `/api/<namespace>/<service_id>/<resource_path>`.
+Use `simon api` with method POST and the full path:
 
 Example:
-```
-sn_rest_api:
-  method: POST
-  path: /api/x_simon/simon_kb_publisher/publish/<article_sys_id>
+```bash
+simon api "/api/x_simon/simon_kb_publisher/publish/<article_sys_id>" -X POST
 ```
 
 ## Cleanup — Removing a Scripted REST Service

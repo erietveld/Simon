@@ -441,16 +441,16 @@ function formatTime(iso) {
 }
 
 const toolColors = {
-  sn_query: '#58a6ff',
-  sn_get_record: '#79c0ff',
-  sn_create_record: '#3fb950',
-  sn_update_record: '#d2a8ff',
-  sn_delete_record: '#f85149',
-  sn_table_structure: '#ffa657',
-  sn_script_include: '#e3b341',
-  sn_rest_api: '#f0883e',
-  sn_instance_info: '#8b949e',
-  sn_switch_update_set: '#8b949e',
+  query: '#58a6ff',
+  get: '#79c0ff',
+  create: '#3fb950',
+  update: '#d2a8ff',
+  delete: '#f85149',
+  schema: '#ffa657',
+  script: '#e3b341',
+  api: '#f0883e',
+  instances: '#8b949e',
+  'update-set': '#8b949e',
 };
 
 function renderLogs(logs) {
@@ -465,7 +465,7 @@ function renderLogs(logs) {
   }
 
   const rows = logs.map((entry, i) => {
-    const color = toolColors[entry.tool] || '#c9d1d9';
+    const color = toolColors[(entry.command || entry.tool)] || '#c9d1d9';
     const rowClass = entry.isError ? 'log-row log-row-error' : 'log-row';
     const flags = [
       entry.truncated ? '<span class="log-flag trunc" title="Response was truncated">T</span>' : '',
@@ -478,7 +478,7 @@ function renderLogs(logs) {
     return `
       <tr class="${rowClass}" onclick="toggleLog(${i})" id="log-row-${i}">
         <td class="log-time">${formatTime(entry.timestamp)}</td>
-        <td><span class="log-tool-badge" style="color:${color}">${escHtml(entry.tool)}</span></td>
+        <td><span class="log-tool-badge" style="color:${color}">${escHtml((entry.command || entry.tool))}</span></td>
         <td class="log-inst">${instName}</td>
         <td class="log-size">${formatSize(entry.requestSize || 0)}</td>
         <td class="log-size">${formatSize(entry.responseSize || 0)}</td>

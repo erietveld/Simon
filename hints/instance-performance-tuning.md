@@ -19,19 +19,15 @@ POV/demo instances provisioned from real customer environments often carry heavy
 
 ### Step 1 — Find what's running
 
-```
-sn_query:
-  table: sys_progress_worker
-  query: state=running
-  fields: name, state, message, sys_created_by
+```bash
+simon query sys_progress_worker \
+  --query "state=running" \
+  --fields "name,state,message,sys_created_by"
 
-sn_query:
-  table: sysauto
-  query: active=true^run_typeLIKEperiodically^run_periodISNOTEMPTY
-  fields: name, run_period, run_type, sys_scope
-  order_by: run_period
-  order_dir: asc
-  limit: 100
+simon query sysauto \
+  --query "active=true^run_typeLIKEperiodically^run_periodISNOTEMPTY" \
+  --fields "name,run_period,run_type,sys_scope" \
+  --order-by run_period --order-dir asc --limit 100
 ```
 
 ### Step 2 — Identify high-frequency jobs
@@ -45,14 +41,11 @@ Sort by `run_period` ascending. Flag anything under 1 minute as high-frequency. 
 
 ### Step 3 — Measure execution time
 
-```
-REST GET:
-  /api/now/table/syslog_transaction
-  ?sysparm_query=urlLIKE<job name fragment>
-  &sysparm_fields=url,response_time,sys_created_on
-  &sysparm_order_by=response_time
-  &sysparm_order_by_direction=desc
-  &sysparm_limit=50
+```bash
+simon query syslog_transaction \
+  --query "urlLIKE<job name fragment>" \
+  --fields "url,response_time,sys_created_on" \
+  --order-by response_time --order-dir desc --limit 50
 ```
 
 Note: the `name` field is empty in `syslog_transaction`. Use the `url` field instead — it contains `JOB: <name>`.
@@ -62,18 +55,18 @@ A job is problematic if its `response_time` (ms) regularly approaches or exceeds
 ### Step 4 — Throttle or disable
 
 **Throttle** (set to 1 hour) if the job may be needed but is running too frequently:
-```
-sn_update_record:
-  table: sysauto
-  fields: { run_period: "1970-01-01 01:00:00", run_type: "periodically" }
+```bash
+simon update sysauto <sys_id> <<'EOF'
+{ "run_period": "1970-01-01 01:00:00", "run_type": "periodically" }
+EOF
 ```
 Note: `run_period` uses epoch-based duration format. 1 hour = `1970-01-01 01:00:00`.
 
 **Disable** if the feature is not part of the POV:
-```
-sn_update_record:
-  table: sysauto
-  fields: { active: "false" }
+```bash
+simon update sysauto <sys_id> <<'EOF'
+{ "active": "false" }
+EOF
 ```
 
 ## Standard POV Cleanup Playbook
@@ -112,7 +105,7 @@ These are usually safe to **throttle to 1 hour** (keep running, just less often)
 
 ## Background Script for Bulk Cleanup
 
-More efficient than individual `sn_update_record` calls. Paste into `/sys.scripts.do`:
+More efficient than individual `simon update` calls. Paste into `/sys.scripts.do`:
 
 ```javascript
 var toDisable = [
@@ -173,7 +166,7 @@ if (notFound.length) gs.print('NOT FOUND: ' + notFound.join(', '));
 
 ## Gotchas
 
-- **ITOM Licensing store jobs** are ACL-protected in their scoped app — `sn_update_record` returns 403. These are on-demand only (no `run_period`) so they don't contribute to load anyway.
+- **ITOM Licensing store jobs** are ACL-protected in their scoped app — `simon update` returns 403. These are on-demand only (no `run_period`) so they don't contribute to load anyway.
 - **run_period field format**: Duration is stored as a datetime string relative to epoch: `1970-01-01 00:01:00` = 1 minute, `1970-01-01 01:00:00` = 1 hour.
 - **`run_type` field**: If a job's `run_type` is `daily` but you want it periodic, update both `run_type: "periodically"` and `run_period`.
 - **syslog_transaction `name` field is empty** — always filter and read by `url` instead.

@@ -153,7 +153,7 @@ async function getAuthHeader(inst) {
 
   if (inst.authType !== 'oauth') return getBasicAuthHeader(inst);
 
-  // Re-read from disk to get latest session (MCP and Express may run in different processes)
+  // Re-read from disk to get latest session (CLI and Express may run in different processes)
   const fresh = getInstance(inst.id);
   if (fresh) inst = fresh;
 

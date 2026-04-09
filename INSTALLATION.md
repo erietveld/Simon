@@ -157,27 +157,16 @@ If Node.js is not installed:
 
 ---
 
-## Step 8 — Reload VS Code so Claude can see Simon's tools
+## Step 8 — Verify Simon works
 
-> **This step is easy to miss and will cause confusion if skipped.**
-
-Simon includes an MCP server that gives Claude direct access to ServiceNow. Claude Code only picks up this server when VS Code is reloaded after the project is first opened.
-
-1. Press `Ctrl+Shift+P` (Windows) or `Cmd+Shift+P` (Mac)
-2. Type `reload window` and select **Developer: Reload Window**
-3. VS Code will briefly go blank and reload — this is normal
-4. Wait a few seconds for everything to start up again
-
-### Verify that the tools are active
-
-1. Open the Claude chat panel
+1. Open the Claude chat panel in VS Code
 2. Start a new conversation and send this message:
    ```
-   What ServiceNow tools do you have available?
+   Run simon instances
    ```
-3. Claude should respond listing tools such as `sn_query`, `sn_get_record`, `sn_instance_info`, etc.
+3. Claude should run the command and show your registered instance(s).
 
-If Claude says it has no ServiceNow tools, see [Troubleshooting](#troubleshooting) below.
+If Claude says it can't find the `simon` command, see [Troubleshooting](#troubleshooting) below.
 
 ---
 
@@ -221,14 +210,12 @@ Node.js is not installed. Follow the instructions in Step 5.
 ### `npm start` fails with "address already in use"
 Port 3001 is already in use (possibly an earlier Simon session). Either close the other terminal running Simon, or ask Claude: *"Port 3001 is in use on my computer — how do I find and stop the process using it?"*
 
-### Claude does not see any ServiceNow tools after reload
-Check the following:
-- The Simon server (`npm start`) is running in a terminal
+### Claude can't find the `simon` command
+The `simon` CLI is registered locally when you run `npm install` — it only works inside the Simon project directory. Check the following:
 - You opened VS Code **from the Simon project folder** (check the title bar shows the Simon folder)
-- You reloaded the window (Step 8) after opening the project — if not, do it now
-- Try reloading the window once more: `Ctrl+Shift+P` → **Developer: Reload Window**
-
-If still not working, ask Claude: *"My Simon MCP server is not loading. The project is at [folder path]. Can you help me diagnose why Claude Code is not picking up the MCP tools from .mcp.json?"*
+- Run `npm install` in the terminal if you haven't already — this registers the CLI
+- Try running `node src/cli.mjs --help` directly to confirm the CLI works
+- If you opened a terminal outside the Simon folder, close it and open a new one from within the project
 
 ### Claude keeps asking for instance credentials
 You need to add your instance in the Simon web UI first — see Step 7. The web server must also be running (`npm start`).

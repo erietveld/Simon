@@ -52,9 +52,7 @@ Use namespace `x_simon`, service_id `simon_kb_publisher` → endpoint: `/api/x_s
 > **Do not store sys_ids or instance names in this file.** If you previously created a `x_etool`/`etool_kb_publisher` service on an instance, clean it up: delete its `sys_ws_operation` children, then the `sys_ws_definition` record (see scripted-rest-api.md cleanup section).
 
 ## Efficient Query to Check KB Version
-```
-sn_get_record:
-  table: kb_knowledge_base
-  sys_id: <kb_knowledge_base sys_id from article>
-  fields: title, kb_version, workflow, kb_publish_flow
+```bash
+simon get kb_knowledge_base <kb_knowledge_base sys_id from article> \
+  --fields "title,kb_version,workflow,kb_publish_flow"
 ```

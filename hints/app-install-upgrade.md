@@ -11,28 +11,25 @@
 | `/api/sn_appclient/appmanager/app_info_from_store/{sys_id}/{version}` | Store-side metadata for a specific version — returns a different `sys_id` (store record ID, not scope ID) |
 | `/api/sn_appclient/appmanager/` (operations) | Internal App Manager API — lists available ops via `sys_ws_operation` query on `web_service_definition.name=AppManager(Internal API)` |
 | `/api/sn_cicd/app_repo/install` | **Primary install/upgrade API** — bypasses suite UI |
-| `/api/sn_cicd/progress/{trackerId}` | Poll install progress (also works for App Manager tracker IDs) |
+| `/api/sn_cicd/progress/{trackerId}` | Poll install progress — **may return 401 on some instances** (ACL issue); use `sys_execution_tracker` table instead |
+| `sys_execution_tracker` | **Preferred progress poll** — query by `sys_id=<trackerId>`; fields: `state`, `percent_complete`, `message` |
 
 ---
 
 ## How to Check If an App Is Installed and What Version
 
-```
-sn_query:
-  table: sys_scope
-  query: scope=<scope_name>
-  fields: name, scope, version
+```bash
+simon query sys_scope \
+  --query "scope=<scope_name>" \
+  --fields "name,scope,version"
 ```
 
 To find the latest available version:
-```
-sn_query:
-  table: sys_app_version
-  query: scope=<scope_name>
-  fields: name, scope, version
-  order_by: version
-  order_dir: desc
-  limit: 1
+```bash
+simon query sys_app_version \
+  --query "scope=<scope_name>" \
+  --fields "name,scope,version" \
+  --order-by version --order-dir desc --limit 1
 ```
 
 Or use the App Manager API which returns both at once:
@@ -60,11 +57,33 @@ POST /api/sn_cicd/app_repo/install
 - `version` = target version string (e.g. `8.0.5`)
 - `auto_upgrade_base_app=true` = allows auto-upgrading dependency apps that are out of date
 
-**Poll progress:**
+**Fire install via simon CLI:**
+```bash
+simon api "/api/sn_cicd/app_repo/install?sys_id=<sys_id>&version=<version>&auto_upgrade_base_app=true" \
+  -i <instance> -X POST
+```
+Tracker ID is in the response at `result.links.progress.id`.
+
+**Poll progress (preferred — use table API):**
+```bash
+simon query sys_execution_tracker -i <instance> \
+  --query "sys_id=<trackerId>" \
+  --fields "name,state,percent_complete,message"
+```
+States: `0`=Pending, `1`=Running, `2`=Successful, `3`=Failed.
+
+Poll multiple trackers at once:
+```bash
+simon query sys_execution_tracker -i <instance> \
+  --query "sys_idIN<id1>,<id2>,<id3>" \
+  --fields "sys_id,name,state,percent_complete,message" --limit 50
+```
+
+**Alternative (may 401):**
 ```
 GET /api/sn_cicd/progress/<trackerId>
 ```
-States: `0`=Pending, `1`=Running, `2`=Successful, `3`=Failed.
+The `/api/sn_cicd/progress/` REST endpoint returns 401 on some instances due to ACL restrictions, even when the install POST succeeded. Use `sys_execution_tracker` instead.
 
 The `sys_scope` version field updates to the new version before the tracker reaches state 2 — verify success by checking `sys_scope`, not just the tracker. The tracker may stick at 98% for several minutes while post-install scripts run.
 
@@ -91,3 +110,4 @@ The suite includes `sn_skills_int` (Skills foundation) and `sn_skills_int_ws` (S
 - **Suite siblings ≠ dependencies.** The "Now Assist" suite bundles many unrelated apps together for the Store UI. The blocked siblings (`sn_skills_int`, `sn_skills_int_ws`) are not in the Skill Kit's `dependencies` field — they're just co-packaged in the suite. The CI/CD API only resolves real dependencies.
 - **The App Manager `installations` endpoint** (`GET /api/sn_appclient/appmanager/installations`) throws a 500 Script Evaluation Exception — it's broken on this instance/version.
 - **Tracker progress can stall at 98%** for several minutes during post-install script execution. Don't assume it failed — verify via `sys_scope` version instead.
+- **`/api/sn_cicd/progress/<id>` can return 401** even when the install POST worked fine. Query `sys_execution_tracker` by `sys_id` instead — same data, no ACL issue.

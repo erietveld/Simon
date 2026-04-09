@@ -1,6 +1,6 @@
 # Simon
 
-**S**erviceNow **I**ntegrated **M**CP **O**perations **N**ode — AI assistant for ServiceNow operations.
+**S**erviceNow **I**ntegrated **M**agical **O**perations **N**ode — AI assistant for ServiceNow operations.
 
 Simon connects Claude Code directly to your ServiceNow instance. No copy-paste. No plumbing. Describe what you need — query data, configure AI Agents, populate demo environments, inspect logs — and get the result.
 
@@ -21,7 +21,7 @@ See [INSTALLATION.md](INSTALLATION.md) for a step-by-step guide covering VS Code
 ## Prerequisites
 
 - **Node.js 20.12+** — check your version with `node --version`. Download from [nodejs.org](https://nodejs.org) if needed.
-- **Claude Code** — the MCP server integrates directly with Claude Code's CLI.
+- **Claude Code** — Simon's CLI integrates directly with Claude Code.
 
 ## Getting Started
 
@@ -55,9 +55,11 @@ Go to the **Instances** tab and add your instance. Two auth methods are supporte
 
 Your credentials are stored locally in `instances.json` (gitignored — never committed).
 
-**5. Set up Claude Code integration**
+**5. Use the `simon` CLI**
 
-The MCP server registers automatically via `.mcp.json`. Start a Claude Code session in this project directory and the ServiceNow tools will be available immediately.
+Running `npm install` registers the `simon` command locally inside the project. It is available whenever you open a terminal (or Claude Code session) **from the Simon project directory**. Run `simon --help` to discover all available commands.
+
+> The command won't be found if you run it from a different folder. Always open VS Code (or your terminal) in the Simon project root.
 
 ## What you can do with Simon
 
@@ -72,23 +74,23 @@ The MCP server registers automatically via `.mcp.json`. Start a Claude Code sess
 ### Web UI (`http://localhost:3001`)
 Manage instances and manually test ServiceNow REST API calls.
 
-### Claude Code (MCP tools)
-When working in Claude Code, the following tools are available directly in the conversation:
+### Claude Code (`simon` CLI)
+When working in Claude Code, all ServiceNow operations go through the `simon` CLI via the Bash tool:
 
-| Tool | Purpose |
-|------|---------|
-| `sn_query` | Query records from any table |
-| `sn_get_record` | Get a single record by sys_id |
-| `sn_create_record` | Create a new record |
-| `sn_update_record` | Update an existing record |
-| `sn_delete_record` | Delete a record |
-| `sn_table_structure` | Inspect table schema and relationships |
-| `sn_script_include` | Call a Script Include via GlideAjax |
-| `sn_rest_api` | Generic REST API call |
-| `sn_instance_info` | List configured instances |
-| `sn_switch_update_set` | Switch the active update set |
+| Command | Purpose |
+|---------|---------|
+| `simon query` | Query records from any table |
+| `simon get` | Get a single record by sys_id |
+| `simon create` | Create a new record |
+| `simon update` | Update an existing record |
+| `simon delete` | Delete a record |
+| `simon schema` | Inspect table schema and relationships |
+| `simon script` | Call a Script Include via GlideAjax |
+| `simon api` | Generic REST API call |
+| `simon instances` | List configured instances |
+| `simon update-set` | Switch the active update set |
 
-Every tool takes an `instance_id` parameter — you can operate against multiple instances in the same conversation without switching context.
+Every command takes a `-i <instance>` flag — you can operate against multiple instances in the same conversation without switching context. Run `simon <command> --help` for details.
 
 ### Hints
 `hints/` is an adaptive knowledge library that grows over time. It captures the right query patterns, table relationships, and gotchas for your environment so Simon doesn't repeat discovery work across sessions. Check `hints/INDEX.md` before starting any non-trivial task.
@@ -103,6 +105,5 @@ PORT=3002
 ## Components
 
 - **`src/server.js`** — Express server (port 3001) with browser UI
-- **`src/mcp-server.mjs`** — MCP stdio server exposing ServiceNow tools to Claude Code
 - **`src/sn-auth.js`** — Shared OAuth 2.0 / Basic auth token management
 - **`src/sn-client.js`** — Shared ServiceNow REST/GlideAjax API client

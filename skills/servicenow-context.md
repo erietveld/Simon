@@ -9,28 +9,29 @@ Simon is primarily a tool for interacting with **ServiceNow environments**. Most
 If the user mentions a word or name you don't recognise, it is very likely a **ServiceNow instance name** registered in Simon. Do not treat it as an unknown or ask for clarification before checking.
 
 **Always check first:**
-```
-sn_instance_info   ← lists all registered instances with their IDs, URLs, and login state
-```
-
-Then switch to the relevant instance:
-```
-sn_switch_instance  instance_id: <id from sn_instance_info>
+```bash
+simon instances   # lists all registered instances with IDs, URLs, and login state
 ```
 
-## Using MCP Tools
+## Using the Simon CLI
 
-The MCP server provides ServiceNow tools **directly in this conversation**. Always use them directly — never delegate to a subagent for ServiceNow operations.
+All ServiceNow operations go through the `simon` CLI binary, invoked via the Bash tool.
 
-| Tool | Use for |
-|------|---------|
-| `sn_instance_info` | List all instances, check active instance and login state |
-| `sn_switch_instance` | Switch the active instance before querying |
-| `sn_query` | Query records from any table |
-| `sn_get_record` | Fetch a single record by sys_id |
-| `sn_create_record` | Create a new record |
-| `sn_update_record` | Update fields on an existing record |
-| `sn_delete_record` | Delete a record |
-| `sn_table_structure` | Explore a table's schema and relationships |
-| `sn_rest_api` | Generic REST call for anything not covered above |
-| `sn_switch_update_set` | Switch the active update set |
+**Discovery entry point** — run this first if unsure which command to use:
+```bash
+simon --help
+```
+
+Run `simon <command> --help` for per-command flags and examples.
+
+**Passing record fields (create/update)** — always use a heredoc, never per-field flags:
+```bash
+simon create incident -i myinstance <<'EOF'
+{
+  "short_description": "Network down",
+  "priority": "1"
+}
+EOF
+```
+
+**Instance targeting** — pass `-i <name-or-id>` to all commands. Accepts exact instance ID (`inst_…`), exact name, or a partial/fuzzy name. When unsure, run `simon instances` first.

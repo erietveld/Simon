@@ -40,6 +40,63 @@ grep -rE '\b(INC|CHG|RITM|PRB|TASK|REQ|SCTASK)\d{7}\b' . --include="*.md" --excl
 
 **If found:** remove the data from the file. If the information was useful context, rephrase it as a generic pattern or observation rather than copying live data.
 
+## Audit for Inconsistencies and Tangled Guidance
+
+Periodically review the instruction/context files to catch conflicting rules, stale references, and duplicated content before they cause confusion.
+
+**Files to review together:**
+
+| File | Role |
+|------|------|
+| `CLAUDE.md` | Always-loaded rules and pointers |
+| `skills/*.md` | Loaded on demand — behavioural guides |
+| `.claude/agents/*.md` | Subagent definitions |
+| `hints/INDEX.md` + `hints/*.md` | Query/table knowledge |
+| `memory/MEMORY.md` + `memory/*.md` | Persistent cross-session state |
+
+**What to look for:**
+
+- **Conflicting rules** — same topic addressed differently in two files (e.g. "never use subagent" in a skill vs. "use subagent for X" in an agent definition)
+- **Duplicated content** — the same information spelled out in multiple places; consolidate to one and point to it
+- **Stale pointers** — references to files, tools, or fields that no longer exist
+- **Orphaned files** — skill or hint files not referenced from any index
+- **Memory vs. reality** — memory files asserting something about the codebase that no longer holds; verify with a grep or file read, then update or delete
+
+**Quick checks:**
+
+```bash
+# Find hint files not listed in INDEX.md
+for f in hints/*.md; do
+  name=$(basename "$f")
+  grep -q "$name" hints/INDEX.md || echo "UNLISTED: $f"
+done
+
+# Find broken file references in CLAUDE.md and skills
+grep -rE '\[.*\]\(.*\.md\)' CLAUDE.md skills/ | grep -v 'http' | \
+  sed 's/.*(\(.*\))/\1/' | while read p; do [ -f "$p" ] || echo "MISSING: $p"; done
+```
+
+**After fixing:** if the inconsistency was non-obvious (e.g. two files pulling in opposite directions), add a note here so future audits know it was a known problem area.
+
+## Keep CLAUDE.md Token-Efficient
+
+CLAUDE.md is loaded into every conversation, so it should stay lean. Move detailed content into dedicated files and replace it with a short reference.
+
+**When to extract:** any section in CLAUDE.md that is longer than ~10 lines and isn't critical to read on every task (architecture overviews, procedure details, background context).
+
+**How to extract:**
+
+1. Create a dedicated file (e.g. `ARCHITECTURE.md`, `ONBOARDING.md`) with the full content.
+2. Replace the section in CLAUDE.md with a single-line pointer:
+   ```
+   ## Architecture
+   See [ARCHITECTURE.md](ARCHITECTURE.md) for project overview and file map.
+   ```
+3. Keep the section heading in CLAUDE.md so the structure is still discoverable.
+
+**Good candidates for extraction:** architecture descriptions, onboarding guides, detailed procedures, background context.
+**Keep inline:** anything Claude needs to act on immediately (identity/character, must-follow rules, the hints requirement).
+
 ## Manage Hint File Size
 
 Hint files should remain focused and scannable. A file that grows too large becomes harder to use than no hint at all.

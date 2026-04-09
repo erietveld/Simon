@@ -1,9 +1,4 @@
 {
-  "mcpServers": {
-    "servicenow": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["src/mcp-server.mjs"]
-    }
-  }
+  "mcpServers": {},
+  "disabledMcpServers": ["inboxer"]
 }

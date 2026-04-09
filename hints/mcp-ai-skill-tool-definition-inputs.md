@@ -19,40 +19,38 @@ They are **child records** in `sn_mcp_ai_skill_tool_input` linked by `tool_defin
 
 ### Step 1: Find the capability's input attributes
 
-```
-sn_query:
-  table: sys_one_extend_definition_attribute
-  query: capability=<capability_sys_id>^type=input
-  fields: sys_id,name,label,description,data_type,mandatory,default_value
-  display_value: all
+```bash
+simon query sys_one_extend_definition_attribute \
+  --query "capability=<capability_sys_id>^type=input" \
+  --fields "sys_id,name,label,description,data_type,mandatory,default_value" \
+  --display-value all
 ```
 
 Get the capability sys_id via: `sn_nowassist_skill_config.skill_id`
 
 ### Step 2: Check existing tool inputs
 
-```
-sn_query:
-  table: sn_mcp_ai_skill_tool_input
-  query: tool_definition=<tool_definition_sys_id>
-  display_value: all
+```bash
+simon query sn_mcp_ai_skill_tool_input \
+  --query "tool_definition=<tool_definition_sys_id>" \
+  --display-value all
 ```
 
 ### Step 3: Create missing input records
 
-```
-sn_create_record:
-  table: sn_mcp_ai_skill_tool_input
-  fields:
-    tool_definition: <sn_mcp_ai_skill_tool_definition sys_id>
-    tool_input: <sys_one_extend_definition_attribute sys_id>
-    name: <attribute name>
-    description: <attribute description>
-    enabled: true
-    static_value: false
-    default_value: ""
-    value: ""
-  transaction_scope: <app scope sys_id>
+```bash
+simon create sn_mcp_ai_skill_tool_input <<'EOF'
+{
+  "tool_definition": "<sn_mcp_ai_skill_tool_definition sys_id>",
+  "tool_input": "<sys_one_extend_definition_attribute sys_id>",
+  "name": "<attribute name>",
+  "description": "<attribute description>",
+  "enabled": "true",
+  "static_value": "false",
+  "default_value": "",
+  "value": ""
+}
+EOF
 ```
 
 ## Chain of References

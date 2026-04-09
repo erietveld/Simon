@@ -11,18 +11,16 @@
 
 Use `model_id` — **NOT** `action_type_definition` — when querying inputs/outputs:
 
-```
-sn_query:
-  table: sys_hub_action_input
-  query: model_id=<action_sys_id>
-  fields: sys_id,element,label,internal_type,mandatory,default_value,hint,order,attributes
-  order_by: order
+```bash
+simon query sys_hub_action_input \
+  --query "model_id=<action_sys_id>" \
+  --fields "sys_id,element,label,internal_type,mandatory,default_value,hint,order,attributes" \
+  --order-by order
 
-sn_query:
-  table: sys_hub_action_output
-  query: model_id=<action_sys_id>
-  fields: sys_id,element,label,internal_type,order,attributes
-  order_by: order
+simon query sys_hub_action_output \
+  --query "model_id=<action_sys_id>" \
+  --fields "sys_id,element,label,internal_type,order,attributes" \
+  --order-by order
 ```
 
 - `element` = programmatic name (e.g. `chat_id`, `credential_alias`)

@@ -3,23 +3,19 @@
 ## How to Search
 
 ### Subflows (preferred for AI agents — usually have string-only inputs)
-```
-sn_query:
-  table: sys_hub_flow
-  query: nameLIKE<keyword>^active=true^type=subflow
-  fields: sys_id,name,description
-  display_value: all
-  limit: 20
+```bash
+simon query sys_hub_flow \
+  --query "nameLIKE<keyword>^active=true^type=subflow" \
+  --fields "sys_id,name,description" \
+  --display-value all --limit 20
 ```
 
 ### Flow Actions
-```
-sn_query:
-  table: sys_hub_action_type_definition
-  query: nameLIKE<keyword>^active=true
-  fields: sys_id,name,description,state,accessible_from
-  display_value: all
-  limit: 20
+```bash
+simon query sys_hub_action_type_definition \
+  --query "nameLIKE<keyword>^active=true" \
+  --fields "sys_id,name,description,state,accessible_from" \
+  --display-value all --limit 20
 ```
 
 To check inputs for either, see [flow-designer-action-inputs-outputs.md](flow-designer-action-inputs-outputs.md).

@@ -5,57 +5,38 @@ How to add tools to an agent. See `ai-agent-config.md` for table reference and a
 ## Add a Record Lookup (CRUD) Tool
 
 Step 1 — create the tool definition:
-```
-sn_create_record:
-  table: sn_aia_tool
-  fields:
-    name: <ToolName>
-    type: crud
-    record_type: Custom
-    description: <what the tool does>
-    script: <copy GlideRecordSecure script from an existing crud tool>
-    input_schema: '[{"name":"crudInputs","description":"<description>"}]'
-    target_document_table: sn_aia_tool
+```bash
+simon create sn_aia_tool <<'EOF'
+{
+  "name": "<ToolName>",
+  "type": "crud",
+  "record_type": "Custom",
+  "description": "<what the tool does>",
+  "script": "<copy GlideRecordSecure script from an existing crud tool>",
+  "input_schema": "[{\"name\":\"crudInputs\",\"description\":\"<description>\"}]",
+  "target_document_table": "sn_aia_tool"
+}
+EOF
 ```
 
 Step 2 — assign tool to agent with query config:
-```
-sn_create_record:
-  table: sn_aia_agent_tool_m2m
-  fields:
-    name: <ToolName>
-    agent: <sn_aia_agent_sys_id>
-    tool: <sn_aia_tool_sys_id>
-    execution_mode: autopilot
-    active: true
-    description: <description>
-    entity: sn_aia_agent
-    entity_id: <sn_aia_agent_sys_id>
-    widgets: db0e858eff62b210f465ffffffffff2c
-    pre_message: <"Doing X...">
-    post_message: <"Done X">
-    inputs: |
-      [{
-        "name": "crudInputs",
-        "description": "CRUD Input Variables. These are already pre-defined. Under no circumstances should you prompt the user for this information or attempt to change these values.",
-        "value": {
-          "operation": "lookup",
-          "table": { "value": "<table_name>", "displayValue": "<Table Label>" },
-          "query": "<encoded_query>",
-          "returnFields": [
-            {
-              "excludedOperators": [], "extendedOperators": null,
-              "name": "<field>", "label": "<Label>", "type": "string",
-              "referenceTable": null, "referenceTableDefaultField": null,
-              "referenceKey": null, "dictionaryAttributes": [],
-              "id": "<field>", "sublabel": "<field>"
-            }
-          ],
-          "limit": "1",
-          "orderBy": "",
-          "sortType": ""
-        }
-      }]
+```bash
+simon create sn_aia_agent_tool_m2m <<'EOF'
+{
+  "name": "<ToolName>",
+  "agent": "<sn_aia_agent_sys_id>",
+  "tool": "<sn_aia_tool_sys_id>",
+  "execution_mode": "autopilot",
+  "active": "true",
+  "description": "<description>",
+  "entity": "sn_aia_agent",
+  "entity_id": "<sn_aia_agent_sys_id>",
+  "widgets": "db0e858eff62b210f465ffffffffff2c",
+  "pre_message": "<Doing X...>",
+  "post_message": "<Done X>",
+  "inputs": "[{\"name\":\"crudInputs\",\"description\":\"CRUD Input Variables. These are already pre-defined. Under no circumstances should you prompt the user for this information or attempt to change these values.\",\"value\":{\"operation\":\"lookup\",\"table\":{\"value\":\"<table_name>\",\"displayValue\":\"<Table Label>\"},\"query\":\"<encoded_query>\",\"returnFields\":[{\"excludedOperators\":[],\"extendedOperators\":null,\"name\":\"<field>\",\"label\":\"<Label>\",\"type\":\"string\",\"referenceTable\":null,\"referenceTableDefaultField\":null,\"referenceKey\":null,\"dictionaryAttributes\":[],\"id\":\"<field>\",\"sublabel\":\"<field>\"}],\"limit\":\"1\",\"orderBy\":\"\",\"sortType\":\"\"}}]"
+}
+EOF
 ```
 
 ---
@@ -65,44 +46,46 @@ sn_create_record:
 For tools that call OOB subflows (preferred over Flow Actions — subflows typically have string-only inputs).
 
 Step 1 — find the OOB subflow:
-```
-sn_query:
-  table: sys_hub_flow
-  query: nameLIKE<keyword>^active=true^type=subflow
-  fields: sys_id,name,description
-  display_value: all
+```bash
+simon query sys_hub_flow \
+  --query "nameLIKE<keyword>^active=true^type=subflow" \
+  --fields "sys_id,name,description" \
+  --display-value all
 ```
 
 Step 2 — create the tool definition:
-```
-sn_create_record:
-  table: sn_aia_tool
-  fields:
-    name: <ToolName>
-    type: subflow
-    record_type: Custom
-    target_document_table: sys_hub_flow
-    target_document: <sys_hub_flow_sys_id>          ← links to the actual subflow
-    description: <what the tool does, include input names>
-    input_schema: "[]"
-    script: ""
+```bash
+# target_document links to the actual subflow
+simon create sn_aia_tool <<'EOF'
+{
+  "name": "<ToolName>",
+  "type": "subflow",
+  "record_type": "Custom",
+  "target_document_table": "sys_hub_flow",
+  "target_document": "<sys_hub_flow_sys_id>",
+  "description": "<what the tool does, include input names>",
+  "input_schema": "[]",
+  "script": ""
+}
+EOF
 ```
 
 Step 3 — assign tool to agent:
-```
-sn_create_record:
-  table: sn_aia_agent_tool_m2m
-  fields:
-    name: <ToolName>
-    agent: <sn_aia_agent_sys_id>
-    tool: <sn_aia_tool_sys_id>
-    execution_mode: autopilot
-    active: true
-    description: <input mapping instructions for the LLM>
-    entity: sn_aia_agent
-    entity_id: <sn_aia_agent_sys_id>
-    display_output: false
-    inputs: "[]"
+```bash
+simon create sn_aia_agent_tool_m2m <<'EOF'
+{
+  "name": "<ToolName>",
+  "agent": "<sn_aia_agent_sys_id>",
+  "tool": "<sn_aia_tool_sys_id>",
+  "execution_mode": "autopilot",
+  "active": "true",
+  "description": "<input mapping instructions for the LLM>",
+  "entity": "sn_aia_agent",
+  "entity_id": "<sn_aia_agent_sys_id>",
+  "display_output": "false",
+  "inputs": "[]"
+}
+EOF
 ```
 
 ---
@@ -112,26 +95,26 @@ sn_create_record:
 For tools that call OOB Flow Designer actions. **Prefer subflows** when available — flow actions often require Reference or GUI-type inputs that agents can't provide.
 
 Step 1 — find the OOB flow action:
-```
-sn_query:
-  table: sys_hub_action_type_definition
-  query: nameLIKE<keyword>^active=true
-  fields: sys_id,name,description
-  display_value: all
+```bash
+simon query sys_hub_action_type_definition \
+  --query "nameLIKE<keyword>^active=true" \
+  --fields "sys_id,name,description" \
+  --display-value all
 ```
 
 Step 2 — create the tool definition:
-```
-sn_create_record:
-  table: sn_aia_tool
-  fields:
-    name: <ToolName>
-    type: action
-    record_type: Custom
-    target_document_table: sys_hub_action_type_definition
-    description: <what the tool does, include input names>
-    input_schema: "[]"
-    script: ""
+```bash
+simon create sn_aia_tool <<'EOF'
+{
+  "name": "<ToolName>",
+  "type": "action",
+  "record_type": "Custom",
+  "target_document_table": "sys_hub_action_type_definition",
+  "description": "<what the tool does, include input names>",
+  "input_schema": "[]",
+  "script": ""
+}
+EOF
 ```
 
 Step 3 — assign tool to agent (same as subflow pattern above).

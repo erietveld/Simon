@@ -14,12 +14,11 @@
 
 Custom subflows live in a scoped app. Query by `type=subflow` and filter by scope or name:
 
-```
-sn_query:
-  table: sys_hub_flow
-  query: type=subflow^nameLIKE<keyword>^sys_scope.scope=<app_scope>
-  fields: sys_id,name,internal_name,active,status,generation_source,sys_scope
-  display_value: all
+```bash
+simon query sys_hub_flow \
+  --query "type=subflow^nameLIKE<keyword>^sys_scope.scope=<app_scope>" \
+  --fields "sys_id,name,internal_name,active,status,generation_source,sys_scope" \
+  --display-value all
 ```
 
 - `generation_source=text2flow` means it was AI-generated via Flow Designer's natural-language feature
@@ -32,9 +31,8 @@ sn_query:
 
 The `label_cache` field on `sys_hub_flow` contains a JSON array of all variables and how they are wired internally. This is the fastest way to discover a subflow's inputs and what they map to.
 
-```
-sn_rest_api:
-  GET /api/now/table/sys_hub_flow/<sys_id>
+```bash
+simon api "/api/now/table/sys_hub_flow/<sys_id>" -X GET
 ```
 
 Then parse `label_cache`. Look for entries where `name` starts with `subflow.` — these are the subflow inputs:
@@ -70,43 +68,44 @@ Once a subflow exists and is published, proceed to wire it as an agent tool.
 > Full pattern with field details is in `ai-agent-config.md` → "Add a Subflow tool to an agent"
 
 ### Step 1 — Get the subflow sys_id
-```
-sn_query:
-  table: sys_hub_flow
-  query: name=<SubflowName>^type=subflow^status=published
-  fields: sys_id,name
+```bash
+simon query sys_hub_flow \
+  --query "name=<SubflowName>^type=subflow^status=published" \
+  --fields "sys_id,name"
 ```
 
 ### Step 2 — Create the tool definition
-```
-sn_create_record:
-  table: sn_aia_tool
-  fields:
-    name: <ToolName>
-    type: subflow
-    record_type: Custom
-    target_document_table: sys_hub_flow
-    target_document: <sys_hub_flow_sys_id>
-    description: <tell the agent what this does and what inputs it takes>
-    input_schema: "[]"
-    script: ""
+```bash
+simon create sn_aia_tool <<'EOF'
+{
+  "name": "<ToolName>",
+  "type": "subflow",
+  "record_type": "Custom",
+  "target_document_table": "sys_hub_flow",
+  "target_document": "<sys_hub_flow_sys_id>",
+  "description": "<tell the agent what this does and what inputs it takes>",
+  "input_schema": "[]",
+  "script": ""
+}
+EOF
 ```
 
 ### Step 3 — Assign tool to agent
-```
-sn_create_record:
-  table: sn_aia_agent_tool_m2m
-  fields:
-    name: <ToolName>
-    agent: <sn_aia_agent_sys_id>
-    tool: <sn_aia_tool_sys_id>
-    execution_mode: autopilot
-    active: true
-    description: <input mapping instructions — name each input and what to pass>
-    entity: sn_aia_agent
-    entity_id: <sn_aia_agent_sys_id>
-    display_output: false
-    inputs: "[]"
+```bash
+simon create sn_aia_agent_tool_m2m <<'EOF'
+{
+  "name": "<ToolName>",
+  "agent": "<sn_aia_agent_sys_id>",
+  "tool": "<sn_aia_tool_sys_id>",
+  "execution_mode": "autopilot",
+  "active": "true",
+  "description": "<input mapping instructions — name each input and what to pass>",
+  "entity": "sn_aia_agent",
+  "entity_id": "<sn_aia_agent_sys_id>",
+  "display_output": "false",
+  "inputs": "[]"
+}
+EOF
 ```
 
 **Key gotchas:**
