@@ -133,8 +133,6 @@ async function queryRecords({ table, query, fields, limit, offset, orderBy, orde
   if (displayValue) params.set('sysparm_display_value', displayValue);
 
   const url = `${inst.url}/api/now/table/${encodeURIComponent(table)}?${params.toString()}`;
-  console.log(`[SN Query] ${url}`);
-
   const res = await fetch(url, {
     method: 'GET',
     headers: { Authorization: authHeader, Accept: 'application/json' },
@@ -344,8 +342,6 @@ async function getTableStructure(tableName, inst) {
     ? tableData.result.map(t => ({ name: t.name, label: t.label }))
     : null;
 
-  console.log(`[Table Structure] ${name}: ${columns.length} columns, ${outgoing.length} outgoing refs, ${incoming.length} incoming refs`);
-
   return {
     table: {
       name,
@@ -388,8 +384,6 @@ async function callScriptInclude({ scriptInclude, method, params, inst }) {
   }
 
   const url = `${inst.url}/xmlhttp.do?${query.toString()}`;
-  console.log(`[SN Request] ${url}`);
-
   const headers = {
     Accept: 'application/json, application/xml, text/xml, */*',
   };
@@ -399,8 +393,6 @@ async function callScriptInclude({ scriptInclude, method, params, inst }) {
   const snRes = await fetch(url, { method: 'GET', headers });
   const contentType = snRes.headers.get('content-type') || '';
   const body = await snRes.text();
-
-  console.log(`[SN Response] ${snRes.status} ${contentType}`);
 
   if (body.includes('invalid token')) {
     resetSnSession(inst.id);
@@ -413,8 +405,6 @@ async function getScriptIncludeInfo(name, inst) {
   const authHeader = await auth.getAuthHeader(inst);
 
   let url = `${inst.url}/api/now/table/sys_script_include?sysparm_query=api_name=${name}&sysparm_fields=name,api_name,script,client_callable,access,active&sysparm_limit=1`;
-  console.log(`[SN Script Info] Fetching: ${url}`);
-
   let snRes = await fetch(url, {
     method: 'GET',
     headers: { Authorization: authHeader, Accept: 'application/json' },
@@ -424,7 +414,6 @@ async function getScriptIncludeInfo(name, inst) {
   if (!data.result || data.result.length === 0) {
     const shortName = name.includes('.') ? name.split('.').pop() : name;
     url = `${inst.url}/api/now/table/sys_script_include?sysparm_query=name=${shortName}&sysparm_fields=name,api_name,script,client_callable,access,active&sysparm_limit=1`;
-    console.log(`[SN Script Info] Fallback fetch: ${url}`);
     snRes = await fetch(url, {
       method: 'GET',
       headers: { Authorization: authHeader, Accept: 'application/json' },
@@ -438,7 +427,6 @@ async function getScriptIncludeInfo(name, inst) {
 async function restApiCall({ apiPath, httpMethod = 'GET', body, inst }) {
   const authHeader = await auth.getAuthHeader(inst);
   const url = `${inst.url}${apiPath}`;
-  console.log(`[SN REST] ${httpMethod} ${url}`);
 
   const fetchOpts = {
     method: httpMethod,
@@ -457,7 +445,6 @@ async function restApiCall({ apiPath, httpMethod = 'GET', body, inst }) {
   const contentType = snRes.headers.get('content-type') || '';
   const text = await snRes.text();
 
-  console.log(`[SN REST Response] ${snRes.status}`);
 
   let parsed;
   try { parsed = JSON.parse(text); } catch { parsed = null; }

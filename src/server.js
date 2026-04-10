@@ -43,7 +43,7 @@ app.get('/auth/login', (req, res) => {
   });
 
   const authUrl = `${inst.url}/oauth_auth.do?${params.toString()}`;
-  console.log(`[OAuth:${inst.id}] Redirecting to: ${inst.url}/oauth_auth.do`);
+  console.log(`[OAuth:${inst.name}] Redirecting to: ${inst.url}/oauth_auth.do`);
   res.redirect(authUrl);
 });
 
@@ -75,7 +75,7 @@ app.get('/auth/callback', async (req, res) => {
       redirect_uri: REDIRECT_URI,
     });
 
-    console.log(`[OAuth:${inst.id}] Exchanging code for token...`);
+    console.log(`[OAuth:${inst.name}] Exchanging code for token...`);
     const tokenRes = await fetch(`${inst.url}/oauth_token.do`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -85,7 +85,7 @@ app.get('/auth/callback', async (req, res) => {
     const data = await tokenRes.json();
 
     if (data.error) {
-      console.error(`[OAuth:${inst.id}] Token exchange error:`, data);
+      console.error(`[OAuth:${inst.name}] Token exchange error:`, data);
       return res.send(`<h2>Token Error</h2><pre>${JSON.stringify(data, null, 2)}</pre><a href="/">Back</a>`);
     }
 
@@ -95,10 +95,10 @@ app.get('/auth/callback', async (req, res) => {
       tokenExpiry: Date.now() + data.expires_in * 1000,
     });
 
-    console.log(`[OAuth:${inst.id}] Logged in! Token expires in ${data.expires_in}s`);
+    console.log(`[OAuth:${inst.name}] Logged in! Token expires in ${data.expires_in}s`);
     res.redirect('/');
   } catch (err) {
-    console.error(`[OAuth:${inst.id}] Callback error:`, err);
+    console.error(`[OAuth:${inst.name}] Callback error:`, err);
     res.send(`<h2>Error</h2><pre>${err.message}</pre><a href="/">Back</a>`);
   }
 });
@@ -110,7 +110,7 @@ app.get('/auth/logout', (req, res) => {
   if (inst) {
     auth.saveInstanceSession(inst.id, { accessToken: null, refreshToken: null, tokenExpiry: 0 });
     snClient.resetSnSession(inst.id);
-    console.log(`[OAuth:${inst.id}] Logged out`);
+    console.log(`[OAuth:${inst.name}] Logged out`);
   }
   res.redirect('/');
 });

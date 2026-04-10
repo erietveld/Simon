@@ -73,7 +73,7 @@ function resolveInstance(input) {
   if (byFuzzy.length === 1) {
     return {
       inst: byFuzzy[0], corrected: true,
-      correctionNote: `Instance fuzzy-matched: "${input}" → "${byFuzzy[0].name}" (${byFuzzy[0].id}). Use instance_id="${byFuzzy[0].id}" in subsequent calls.`,
+      correctionNote: `Instance fuzzy-matched: "${input}" → "${byFuzzy[0].name}". Use instance="${byFuzzy[0].name}" in subsequent calls.`,
     };
   }
 
@@ -84,7 +84,7 @@ function instanceListText(instances) {
   let text = 'Could not uniquely resolve the instance. Registered instances:\n\n';
   for (const inst of instances) {
     const status = snAuth.isLoggedIn(inst) ? 'logged in' : (inst.authType === 'oauth' ? 'not logged in' : 'basic auth');
-    text += `  [${inst.id}] ${inst.name} — ${inst.url} (${inst.authType}, ${status})\n`;
+    text += `  ${inst.name} — ${inst.url} (${inst.authType}, ${status})\n`;
   }
   return text;
 }
@@ -122,7 +122,7 @@ function isStdinPipe() {
 
 function readStdin() {
   return new Promise((resolve, reject) => {
-    if (process.stdin.isTTY || !isStdinPipe()) { resolve(null); return; }
+    if (process.stdin.isTTY) { resolve(null); return; }
     const chunks = [];
     process.stdin.setEncoding('utf8');
     process.stdin.on('data', chunk => chunks.push(chunk));
@@ -183,7 +183,7 @@ Commands:
   delete   <table> <sys_id>  Delete a record
   schema   <table>           Show table structure and columns
   script   <include> <meth>  Call a ScriptInclude via GlideAjax
-  api      <path>            Generic REST call (body via stdin JSON for writes)
+  api|rest <path>            Generic REST call (body via stdin JSON for writes)
   update-set <name|sys_id>   Switch active update set
 
 Global flags:
@@ -300,19 +300,23 @@ Examples:
   simon script x_myapp.MyUtils lookup -p id=12345 -i myinstance`,
 
   api: `\
-simon api <path>
+simon api|rest <path>
 
 Make a generic REST API call. Pass body as JSON on stdin for write methods.
+"rest" is an alias for "api".
 
 Flags:
   -X, --method GET|POST|PUT|PATCH|DELETE   HTTP method (default: GET)
+  --path <path>                            Alternative to positional path arg
+  --body <json>                            Alternative to stdin for request body
   -i, --instance <name-or-id>
 
 Examples:
   simon api '/api/now/stats/incident?sysparm_count=true' -i myinstance
   simon api /api/now/table/incident -X POST -i myinstance <<'EOF'
   { "short_description": "test" }
-  EOF`,
+  EOF
+  simon rest --path /api/now/table/incident --method POST --body '{"short_description":"test"}' -i myinstance`,
 
   'update-set': `\
 simon update-set <name-or-sys_id>
@@ -327,6 +331,7 @@ Examples:
   simon update-set "My Changes" -i myinstance
   simon update-set abc123def456 --sys-id -i myinstance`,
 };
+HELP_MAP.rest = HELP_MAP.api;
 
 // ─── Arg option definitions ───────────────────────────────────────────────────
 
@@ -364,6 +369,14 @@ const OPTS_MAP = {
   api: {
     ...GLOBAL_OPTS,
     method: { type: 'string', short: 'X' },
+    path: { type: 'string' },
+    body: { type: 'string' },
+  },
+  rest: {
+    ...GLOBAL_OPTS,
+    method: { type: 'string', short: 'X' },
+    path: { type: 'string' },
+    body: { type: 'string' },
   },
   'update-set': {
     ...GLOBAL_OPTS,
@@ -385,7 +398,7 @@ async function cmdInstances() {
   for (let i = 0; i < data.instances.length; i++) {
     const inst = data.instances[i];
     const status = snAuth.isLoggedIn(inst) ? 'logged in' : (inst.authType === 'oauth' ? 'not logged in' : 'basic auth');
-    text += `${i === 0 ? '* ' : '  '}[${inst.id}] ${inst.name} — ${inst.url} (${inst.authType}, ${status})\n`;
+    text += `${i === 0 ? '* ' : '  '}${inst.name} — ${inst.url} (${inst.authType}, ${status})\n`;
   }
   text += '\n* = default instance';
   process.stdout.write(text + '\n');
@@ -411,7 +424,7 @@ async function cmdQuery(positionals, flags) {
     inst,
   });
 
-  logToFile({ timestamp: new Date().toISOString(), command: 'query', instance: { id: inst.id, name: inst.name }, request: { table, ...flags }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
+  logToFile({ timestamp: new Date().toISOString(), command: 'query', instance: inst.name, request: { table, ...flags }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
   if (result.status >= 400) die(`Error ${result.status}: ${JSON.stringify(result.data)}`, 1);
 
   const records = result.data?.result || [];
@@ -433,7 +446,7 @@ async function cmdGet(positionals, flags) {
 
   const result = await snClient.getRecord({ table, sysId, fields: flags.fields, displayValue: flags['display-value'], inst });
 
-  logToFile({ timestamp: new Date().toISOString(), command: 'get', instance: { id: inst.id, name: inst.name }, request: { table, sysId, ...flags }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
+  logToFile({ timestamp: new Date().toISOString(), command: 'get', instance: inst.name, request: { table, sysId, ...flags }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
   if (result.status >= 400) die(`Error ${result.status}: ${JSON.stringify(result.data)}`, 1);
 
   emitOutput(JSON.stringify(result.data?.result || result.data, null, 2), { forceStdout: flags.output === 'stdout' });
@@ -449,7 +462,7 @@ async function cmdCreate(positionals, flags) {
 
   const result = await snClient.createRecord({ table, fields, transactionScope: flags.scope, inst });
 
-  logToFile({ timestamp: new Date().toISOString(), command: 'create', instance: { id: inst.id, name: inst.name }, request: { table, scope: flags.scope }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
+  logToFile({ timestamp: new Date().toISOString(), command: 'create', instance: inst.name, request: { table, scope: flags.scope }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
   if (result.status >= 400) die(`Error ${result.status}: ${JSON.stringify(result.data)}`, 1);
 
   process.stdout.write(writeConfirmation('created', result.data?.result) + '\n');
@@ -466,7 +479,7 @@ async function cmdUpdate(positionals, flags) {
 
   const result = await snClient.updateRecord({ table, sysId, fields, transactionScope: flags.scope, inst });
 
-  logToFile({ timestamp: new Date().toISOString(), command: 'update', instance: { id: inst.id, name: inst.name }, request: { table, sysId, scope: flags.scope }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
+  logToFile({ timestamp: new Date().toISOString(), command: 'update', instance: inst.name, request: { table, sysId, scope: flags.scope }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
   if (result.status >= 400) die(`Error ${result.status}: ${JSON.stringify(result.data)}`, 1);
 
   process.stdout.write(writeConfirmation('updated', result.data?.result) + '\n');
@@ -482,7 +495,7 @@ async function cmdDelete(positionals, flags) {
 
   const result = await snClient.deleteRecord({ table, sysId, inst });
 
-  logToFile({ timestamp: new Date().toISOString(), command: 'delete', instance: { id: inst.id, name: inst.name }, request: { table, sysId }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
+  logToFile({ timestamp: new Date().toISOString(), command: 'delete', instance: inst.name, request: { table, sysId }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
   if (result.status >= 400) die(`Error ${result.status}: ${JSON.stringify(result.data)}`, 1);
 
   process.stdout.write(JSON.stringify({ deleted: true, sys_id: sysId, table }, null, 2) + '\n');
@@ -497,7 +510,7 @@ async function cmdSchema(positionals, flags) {
 
   const result = await snClient.getTableStructure(table, inst);
 
-  logToFile({ timestamp: new Date().toISOString(), command: 'schema', instance: { id: inst.id, name: inst.name }, request: { table }, durationMs: Date.now() - startMs, isError: !!result.error });
+  logToFile({ timestamp: new Date().toISOString(), command: 'schema', instance: inst.name, request: { table }, durationMs: Date.now() - startMs, isError: !!result.error });
   if (result.error) die(`Table not found: ${table}`, 1);
 
   const cols = result.columns || [];
@@ -550,7 +563,7 @@ async function cmdScript(positionals, flags) {
     inst,
   });
 
-  logToFile({ timestamp: new Date().toISOString(), command: 'script', instance: { id: inst.id, name: inst.name }, request: { scriptInclude, method, params }, durationMs: Date.now() - startMs, isError: false });
+  logToFile({ timestamp: new Date().toISOString(), command: 'script', instance: inst.name, request: { scriptInclude, method, params }, durationMs: Date.now() - startMs, isError: false });
 
   if (result.body?.includes('invalid token')) die('Session expired or invalid token. Try the call again.', 1);
 
@@ -567,7 +580,7 @@ async function cmdScript(positionals, flags) {
 }
 
 async function cmdApi(positionals, flags) {
-  const path = positionals[0];
+  const path = flags.path || positionals[0];
   if (!path) die('Error: API path required.\n\n' + HELP_MAP.api, 4);
 
   const method = (flags.method || 'GET').toUpperCase();
@@ -576,7 +589,7 @@ async function cmdApi(positionals, flags) {
 
   let body;
   if (['POST', 'PUT', 'PATCH'].includes(method)) {
-    const raw = await readStdin();
+    const raw = flags.body || await readStdin();
     if (raw && raw.trim()) {
       try { body = JSON.parse(raw); } catch (err) { die(`Error: invalid JSON on stdin — ${err.message}`, 3); }
     }
@@ -584,7 +597,7 @@ async function cmdApi(positionals, flags) {
 
   const result = await snClient.restApiCall({ apiPath: path, httpMethod: method, body, inst });
 
-  logToFile({ timestamp: new Date().toISOString(), command: 'api', instance: { id: inst.id, name: inst.name }, request: { path, method }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
+  logToFile({ timestamp: new Date().toISOString(), command: 'api', instance: inst.name, request: { path, method }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
   if (result.status >= 400) die(`Error ${result.status}: ${JSON.stringify(result.data, null, 2)}`, 1);
 
   const text = typeof result.data === 'string' ? result.data : JSON.stringify(result.data, null, 2);
@@ -604,7 +617,7 @@ async function cmdUpdateSet(positionals, flags) {
     inst,
   });
 
-  logToFile({ timestamp: new Date().toISOString(), command: 'update-set', instance: { id: inst.id, name: inst.name }, request: { nameOrId, isSysId: !!flags['sys-id'] }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
+  logToFile({ timestamp: new Date().toISOString(), command: 'update-set', instance: inst.name, request: { nameOrId, isSysId: !!flags['sys-id'] }, durationMs: Date.now() - startMs, isError: result.status >= 400 });
   if (result.status >= 400) die(`Error ${result.status}: ${JSON.stringify(result.data?.raw)}`, 1);
 
   const { sys_id, name } = result.data;
@@ -623,6 +636,7 @@ const HANDLERS = {
   schema:       cmdSchema,
   script:       cmdScript,
   api:          cmdApi,
+  rest:         cmdApi,
   'update-set': cmdUpdateSet,
 };
 

@@ -45,6 +45,10 @@ After completing any task that required **3 or more attempts**, write a hint fil
 
 See [hints/hints.md](hints/hints.md) for when and how to write hints.
 
+## Simon CLI Ergonomics
+
+When a `simon` CLI call fails because of a wrong command name or unsupported flag syntax, treat it as a candidate for improving the CLI. If the intent was clear but the syntax was off (e.g. `simon rest` instead of `simon api`, or `--body` instead of stdin), consider adding an alias or accepting the alternative syntax so it "just works" next time. The CLI should be lenient and forgiving — if a human or an LLM can reasonably guess a command shape, that shape should work.
+
 ## Token Efficiency
 
 - **Don't read files you're about to delegate to an agent** — the agent will read them itself. Reading first just doubles the cost.

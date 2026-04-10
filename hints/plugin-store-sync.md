@@ -20,7 +20,26 @@ Returns the UTC timestamp of the last successful App Manager sync with the Servi
 
 ## How to Perform a Live Store Sync
 
-The App Manager API triggers a live store query:
+### Step 1 — Trigger the sync
+
+```bash
+simon api '/api/sn_appclient/appmanager/sync_apps?request_type=trigger_apps_sync' -i <instance>
+```
+Returns `{ "result": { "trackerId": "<sys_id>" } }`.
+
+Note: This endpoint is **GET**, not POST (POST returns 405).
+
+### Step 2 — Poll for completion
+
+```bash
+simon api '/api/sn_appclient/appmanager/sync_apps?request_type=get_apps_sync_status&tracker_id=<trackerId>' -i <instance>
+```
+Returns `{ "result": { "isComplete": false, "appsSyncProgress": "3.0", ... } }`.
+Poll every ~5 seconds until `isComplete` is `true`. The `appsSyncProgress` field shows percentage (0–100).
+Once complete, `apps_last_sync_time` in `sys_properties` will be updated.
+
+### Querying cached catalog data (does NOT trigger a sync)
+
 ```
 POST /api/sn_appclient/appmanager/apps?tab_context=updates
 Body: {}

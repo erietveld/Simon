@@ -78,6 +78,31 @@ grep -rE '\[.*\]\(.*\.md\)' CLAUDE.md skills/ | grep -v 'http' | \
 
 **After fixing:** if the inconsistency was non-obvious (e.g. two files pulling in opposite directions), add a note here so future audits know it was a known problem area.
 
+## Sanitise Agent Gallery Entries
+
+Agent Gallery files document reusable AI Agent patterns. Because they are often captured from real instances (e.g. after a workshop), the raw data may contain participant names, user IDs, sys_ids, or implementation mistakes that should not end up in the gallery.
+
+**Before committing a new or updated gallery entry, strip the following:**
+
+| Remove | Why |
+|--------|-----|
+| Participant names or initials (e.g. "ER", "VNPK") | Privacy; the pattern should be generic |
+| User sys_ids or agent sys_ids | Instance-specific data, not reusable |
+| References to bugs, mistakes, or broken configurations | The gallery should describe the *correct* pattern, not document errors |
+| Record numbers from real instances | Internal data leak |
+
+**What to keep:** if a mistake reveals a useful lesson (e.g. "use `LIKE` instead of exact match"), rephrase it as a positive best-practice tip rather than describing the original error.
+
+**Quick check:**
+
+```bash
+# Scan gallery files for sys_id-shaped strings
+grep -rE '[0-9a-f]{32}' AgentGallery/ --include="*.md"
+
+# Scan for common SN record number patterns
+grep -rE '\b(INC|CHG|RITM|PRB|TASK|REQ|SCTASK)\d{7}\b' AgentGallery/ --include="*.md"
+```
+
 ## Keep CLAUDE.md Token-Efficient
 
 CLAUDE.md is loaded into every conversation, so it should stay lean. Move detailed content into dedicated files and replace it with a short reference.

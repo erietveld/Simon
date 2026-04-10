@@ -111,7 +111,7 @@ async function refreshAccessToken(inst) {
   const s = inst.session || {};
   if (!s.refreshToken) return null;
 
-  console.log(`[OAuth:${inst.id}] Refreshing access token...`);
+  console.log(`[OAuth:${inst.name}] Refreshing access token...`);
   const params = new URLSearchParams({
     grant_type: 'refresh_token',
     client_id: inst.clientId,
@@ -126,14 +126,14 @@ async function refreshAccessToken(inst) {
   });
 
   if (!res.ok) {
-    console.error(`[OAuth:${inst.id}] Refresh failed:`, res.status);
+    console.error(`[OAuth:${inst.name}] Refresh failed:`, res.status);
     saveInstanceSession(inst.id, { accessToken: null, refreshToken: null, tokenExpiry: 0 });
     return null;
   }
 
   const data = await res.json();
   if (data.error) {
-    console.error(`[OAuth:${inst.id}] Refresh error:`, data.error);
+    console.error(`[OAuth:${inst.name}] Refresh error:`, data.error);
     saveInstanceSession(inst.id, { accessToken: null, refreshToken: null, tokenExpiry: 0 });
     return null;
   }
@@ -144,7 +144,7 @@ async function refreshAccessToken(inst) {
     tokenExpiry: Date.now() + data.expires_in * 1000,
   };
   saveInstanceSession(inst.id, newSession);
-  console.log(`[OAuth:${inst.id}] Token refreshed`);
+  console.log(`[OAuth:${inst.name}] Token refreshed`);
   return { ...inst, session: newSession };
 }
 
