@@ -6,6 +6,7 @@ This file is the registry of all available hint files. Read the relevant hint fi
 
 | File | Topic | When to use |
 |------|-------|-------------|
+| [ide-file-index-crash.md](ide-file-index-crash.md) | IDE crash on load — `syncStepsV2` / `readFile` / `.slice()` on undefined; tombstone cleanup via MAINT | IDE fails to load with TypeError, diagnosing and fixing sn_glider_ide_file_index tombstones |
 | [now-assist-skills.md](now-assist-skills.md) | Now Assist skill configuration, Creator skills, skill families, deployment channels, admin console URL | Querying or configuring Now Assist skills, finding inactive skills, navigating to Now Assist Admin |
 | [maint-login.md](maint-login.md) | Logging in as MAINT via hop.do URL | Accessing an instance as MAINT user for administrative tasks |
 | [update-set-import.md](update-set-import.md) | Importing an update set XML file, upload.do URL | Navigating directly to the update set import/upload screen |

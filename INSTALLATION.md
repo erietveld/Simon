@@ -124,11 +124,12 @@ If Node.js is not installed:
 
 1. In VS Code, open a terminal: menu **Terminal → New Terminal** (or press `` Ctrl+` `` on Windows, `` Cmd+` `` on Mac)
 2. Make sure the terminal shows the Simon folder path (e.g. `C:\Users\you\Documents\Simon` or `~/Documents/Simon`). If it does not, something went wrong in Step 3 — ask Claude for help.
-3. Run this command to install Simon's dependencies:
+3. Run these commands to install Simon's dependencies and register the `simon` command:
    ```
    npm install
+   npm link
    ```
-   Wait for it to finish — you will see a lot of text scroll by, ending with something like `added 80 packages`.
+   Wait for each command to finish. `npm install` downloads dependencies; `npm link` makes the `simon` command available in your terminal.
 4. Start the Simon server:
    ```
    npm start
@@ -211,10 +212,10 @@ Node.js is not installed. Follow the instructions in Step 5.
 Port 3001 is already in use (possibly an earlier Simon session). Either close the other terminal running Simon, or ask Claude: *"Port 3001 is in use on my computer — how do I find and stop the process using it?"*
 
 ### Claude can't find the `simon` command
-The `simon` CLI is registered locally when you run `npm install` — it only works inside the Simon project directory. Check the following:
+The `simon` CLI is registered when you run `npm link` (Step 6). Check the following:
 - You opened VS Code **from the Simon project folder** (check the title bar shows the Simon folder)
-- Run `npm install` in the terminal if you haven't already — this registers the CLI
-- Try running `node src/cli.mjs --help` directly to confirm the CLI works
+- Run `npm link` in the terminal if you haven't already — this registers the `simon` command globally
+- Try running `node src/cli.mjs --help` directly to confirm the CLI script works
 - If you opened a terminal outside the Simon folder, close it and open a new one from within the project
 
 ### Claude keeps asking for instance credentials

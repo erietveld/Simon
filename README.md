@@ -35,9 +35,10 @@ cd simon
 
 > Forking is recommended because `hints/` accumulates your own ServiceNow knowledge over time — forking lets you commit and back up those hints in your own repo. You can still pull upstream updates with `git pull upstream main`.
 
-**2. Install dependencies**
+**2. Install dependencies and register the CLI**
 ```bash
 npm install
+npm link
 ```
 
 **3. Start the web server**
@@ -57,9 +58,7 @@ Your credentials are stored locally in `instances.json` (gitignored — never co
 
 **5. Use the `simon` CLI**
 
-Running `npm install` registers the `simon` command locally inside the project. It is available whenever you open a terminal (or Claude Code session) **from the Simon project directory**. Run `simon --help` to discover all available commands.
-
-> The command won't be found if you run it from a different folder. Always open VS Code (or your terminal) in the Simon project root.
+`npm link` (from step 2) registers the `simon` command globally so it's available in any terminal. Run `simon --help` to discover all available commands.
 
 ## What you can do with Simon
 
