@@ -76,7 +76,7 @@ simon query sys_hub_flow \
 
 ### Step 2 — Create the tool definition
 ```bash
-simon create sn_aia_tool <<'EOF'
+simon create sn_aia_tool --body - <<'EOF'
 {
   "name": "<ToolName>",
   "type": "subflow",
@@ -92,7 +92,7 @@ EOF
 
 ### Step 3 — Assign tool to agent
 ```bash
-simon create sn_aia_agent_tool_m2m <<'EOF'
+simon create sn_aia_agent_tool_m2m --body - <<'EOF'
 {
   "name": "<ToolName>",
   "agent": "<sn_aia_agent_sys_id>",

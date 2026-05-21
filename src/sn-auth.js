@@ -46,6 +46,7 @@ function addInstance(cfg) {
     name: cfg.name || 'New Instance',
     url: (cfg.url || '').replace(/\/+$/, ''),
     authType: cfg.authType,
+    disabled: !!cfg.disabled,
   };
 
   if (cfg.authType === 'oauth') {
@@ -111,7 +112,6 @@ async function refreshAccessToken(inst) {
   const s = inst.session || {};
   if (!s.refreshToken) return null;
 
-  console.log(`[OAuth:${inst.name}] Refreshing access token...`);
   const params = new URLSearchParams({
     grant_type: 'refresh_token',
     client_id: inst.clientId,
@@ -144,7 +144,6 @@ async function refreshAccessToken(inst) {
     tokenExpiry: Date.now() + data.expires_in * 1000,
   };
   saveInstanceSession(inst.id, newSession);
-  console.log(`[OAuth:${inst.name}] Token refreshed`);
   return { ...inst, session: newSession };
 }
 

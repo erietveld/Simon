@@ -101,6 +101,19 @@ The suite includes `sn_skills_int` (Skills foundation) and `sn_skills_int_ws` (S
 
 ---
 
+## Per-Instance Catalog Entitlement
+
+Different instances see different "latest" versions in their store mirror — even after a fresh sync. Some app versions are gated by instance family/contract. The cleanest way to discover the maximum installable version on a given instance:
+
+```bash
+simon api '/api/sn_appclient/appmanager/apps?tab_context=updates' -X POST -i <instance> --body '{"start":0,"limit":3000}'
+# look for the scope entry; latest_version is the cap for that instance
+```
+
+If `tab_context=updates` doesn't list the app (because it's not installed), try `tab_context=allApps`. If still missing, fall back to `sys_app_version` query — but note the version field sorts as a string, so semver max ≠ string max. Pick the highest semver manually.
+
+When `POST /api/sn_cicd/app_repo/install` returns tracker state=3 with message "Unable to download app package", it almost always means the requested version isn't in that instance's store mirror. Retry with the highest version actually visible in the catalog.
+
 ## Gotchas
 
 - **App Manager internal API is broken for upgrades:** Both `GET /api/sn_appclient/appmanager/app/update` and `GET /api/sn_appclient/appmanager/app/install` fail with "Unable to process schema and dependencies for id: null" — regardless of which sys_id you use (scope ID, version ID, store record ID). Use the CI/CD API instead.

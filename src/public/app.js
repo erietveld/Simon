@@ -1,5 +1,6 @@
 // --- Tabs ---
 let logsAutoRefreshTimer = null;
+const expandedLogs = new Set();
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -63,9 +64,11 @@ function renderInstanceRow(inst) {
     ? '<span class="tag oauth">OAuth</span>'
     : '<span class="tag basic">Basic</span>';
 
-  const statusBadge = inst.loggedIn
-    ? '<span class="tag logged-in">Logged in</span>'
-    : (inst.authType === 'oauth' ? '<span class="tag logged-out">Not logged in</span>' : '<span style="color:#8b949e;font-size:11px">—</span>');
+  const statusBadge = inst.disabled
+    ? '<span class="tag logged-out" title="Disabled — blocked from all simon commands">Disabled</span>'
+    : (inst.loggedIn
+        ? '<span class="tag logged-in">Logged in</span>'
+        : (inst.authType === 'oauth' ? '<span class="tag logged-out">Not logged in</span>' : '<span style="color:#8b949e;font-size:11px">—</span>'));
 
   const loginBtn = inst.authType === 'oauth'
     ? (inst.loggedIn
@@ -73,18 +76,32 @@ function renderInstanceRow(inst) {
         : `<a href="/auth/login?instanceId=${inst.id}" class="row-btn login-btn">Login</a>`)
     : '';
 
+  const toggleBtn = inst.disabled
+    ? `<button class="row-btn login-btn" onclick="toggleInstanceDisabled('${inst.id}', false)">Enable</button>`
+    : `<button class="row-btn" onclick="toggleInstanceDisabled('${inst.id}', true)">Disable</button>`;
+
   return `
-    <tr class="inst-row" id="inst-row-${inst.id}">
+    <tr class="inst-row${inst.disabled ? ' inst-row-disabled' : ''}" id="inst-row-${inst.id}">
       <td class="inst-name-cell">${escHtml(inst.name)}</td>
       <td class="inst-url-cell" title="${escHtml(inst.url)}">${escHtml(inst.url)}</td>
       <td>${authBadge}</td>
       <td>${statusBadge}</td>
       <td class="inst-actions-cell">
         ${loginBtn}
+        ${toggleBtn}
         <button class="row-btn" onclick="showEditInstance('${inst.id}')">Edit</button>
         <button class="row-btn danger-btn" onclick="deleteInstance('${inst.id}', '${escHtml(inst.name)}')">Delete</button>
       </td>
     </tr>`;
+}
+
+async function toggleInstanceDisabled(id, disabled) {
+  await fetch(`/api/instances/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ disabled }),
+  });
+  loadInstances();
 }
 
 async function deleteInstance(id, name) {
@@ -475,8 +492,9 @@ function renderLogs(logs) {
     const instName = entry.instance ? escHtml(entry.instance.name) : '<span style="color:#8b949e">—</span>';
     const ms = entry.durationMs != null ? entry.durationMs : '—';
 
+    const expanded = expandedLogs.has(entry.timestamp);
     return `
-      <tr class="${rowClass}" onclick="toggleLog(${i})" id="log-row-${i}">
+      <tr class="${rowClass}" onclick="toggleLog(${i}, '${entry.timestamp}')" id="log-row-${i}">
         <td class="log-time">${formatTime(entry.timestamp)}</td>
         <td><span class="log-tool-badge" style="color:${color}">${escHtml((entry.command || entry.tool))}</span></td>
         <td class="log-inst">${instName}</td>
@@ -485,7 +503,7 @@ function renderLogs(logs) {
         <td>${flags}</td>
         <td class="log-ms">${ms}</td>
       </tr>
-      <tr class="log-detail hidden" id="log-detail-${i}">
+      <tr class="log-detail${expanded ? '' : ' hidden'}" id="log-detail-${i}">
         <td colspan="7">
           <div class="log-detail-inner">
             <div class="log-detail-col">
@@ -518,9 +536,14 @@ function renderLogs(logs) {
     </table>`;
 }
 
-function toggleLog(i) {
+function toggleLog(i, timestamp) {
   const detail = document.getElementById(`log-detail-${i}`);
-  if (detail) detail.classList.toggle('hidden');
+  if (!detail) return;
+  const nowHidden = detail.classList.toggle('hidden');
+  if (timestamp) {
+    if (nowHidden) expandedLogs.delete(timestamp);
+    else expandedLogs.add(timestamp);
+  }
 }
 
 // --- Helpers ---

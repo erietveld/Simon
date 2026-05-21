@@ -52,11 +52,48 @@ Note: the `name` field is empty in `syslog_transaction`. Use the `url` field ins
 
 A job is problematic if its `response_time` (ms) regularly approaches or exceeds its run interval. This means executions are stacking.
 
-### Step 4 — Throttle or disable
+### Step 4 — Before fighting ACLs, check for a feature-flag escape hatch
+
+**Always check the job's `condition` field and the script body BEFORE trying to flip `active` or `run_period`.** Many scoped scheduled scripts gate their work behind a `sys_properties` toggle. Flipping the property is faster, doesn't touch protected metadata, and survives app upgrades — whereas updating `sysauto` records in scoped apps is frequently blocked by `sys_policy=read` even for admins (see Gotchas below).
+
+```bash
+# Pull the condition + script body
+simon get sysauto_script <sys_id> -i <instance> \
+  --fields "name,condition,script,run_period,active"
+```
+
+Common patterns to look for:
+
+| Pattern in `condition` or `script` | Disable by |
+|---|---|
+| `gs.getProperty('<scope>.enable<X>') === 'true'` | Set that property to `false` |
+| `gs.getProperty('<scope>.<feature>.enabled') == 'true'` | Same |
+| `new <scope>.SomeManager().isEnabled()` | Find the underlying property the manager reads |
+| `gs.getProperty('glide.<feature>') ...` | Platform property — flip with care |
+
+```bash
+# Find the property
+simon query sys_properties -i <instance> \
+  --query "name=<property_name>" \
+  --fields "sys_id,name,value,sys_scope.scope"
+
+# Flip it
+simon update sys_properties <sys_id> -i <instance> --body - <<'EOF'
+{ "value": "false" }
+EOF
+```
+
+The job stays "active" in `sysauto` but exits immediately on its next run — same outcome, no metadata fight.
+
+**Real example (2026-05-08):** The `Playbook Auto Archive Scheduler` was timing out every hour at exactly 20 minutes. Direct `simon update sysauto` returned 403 ACL Exception. Granting `system_scheduler_admin`, creating a scoped Script Include, clearing `sys_policy` — all blocked by record-level metadata protection on the `sn_pa_designer` scope. The script's condition was `gs.getProperty("sn_pa_designer.enableDataRetentionFeatures") === 'true'`. Flipping that one property in `sys_properties` (which is in `global` scope and freely writable) fully disabled the workload — total work was one update.
+
+### Step 5 — Throttle or disable directly
+
+If there's no feature-flag escape hatch:
 
 **Throttle** (set to 1 hour) if the job may be needed but is running too frequently:
 ```bash
-simon update sysauto <sys_id> <<'EOF'
+simon update sysauto <sys_id> --body - <<'EOF'
 { "run_period": "1970-01-01 01:00:00", "run_type": "periodically" }
 EOF
 ```
@@ -64,7 +101,7 @@ Note: `run_period` uses epoch-based duration format. 1 hour = `1970-01-01 01:00:
 
 **Disable** if the feature is not part of the POV:
 ```bash
-simon update sysauto <sys_id> <<'EOF'
+simon update sysauto <sys_id> --body - <<'EOF'
 { "active": "false" }
 EOF
 ```
@@ -166,6 +203,7 @@ if (notFound.length) gs.print('NOT FOUND: ' + notFound.join(', '));
 
 ## Gotchas
 
+- **`sys_policy=read` blocks writes to scoped sysauto records even for admin.** This is platform-level metadata protection on records that came in via an installed scoped app. None of these bypass it from the API: granting `system_scheduler_admin`, running a scoped Script Include in the owning scope, clearing `sys_policy` first, `setWorkflow(false)`. Only UI session elevation ("Edit Application Files") works — but that requires a click. **Always check Step 4 (feature-flag property) before going down this path.**
 - **ITOM Licensing store jobs** are ACL-protected in their scoped app — `simon update` returns 403. These are on-demand only (no `run_period`) so they don't contribute to load anyway.
 - **run_period field format**: Duration is stored as a datetime string relative to epoch: `1970-01-01 00:01:00` = 1 minute, `1970-01-01 01:00:00` = 1 hour.
 - **`run_type` field**: If a job's `run_type` is `daily` but you want it periodic, update both `run_type: "periodically"` and `run_period`.

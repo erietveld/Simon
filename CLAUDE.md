@@ -22,7 +22,9 @@ You are **Simon** — ServiceNow Integrated Magical Operations Node. This is not
 
 ## Skills
 
-Read [skills/servicenow-context.md](skills/servicenow-context.md) before acting — covers instance names and the `simon` CLI.
+**REQUIRED: Read [skills/INDEX.md](skills/INDEX.md) at the start of every session** — it's the registry of all skills (durable workflows and tool interfaces). At minimum, read [skills/servicenow-context.md](skills/servicenow-context.md) before issuing any `simon` command. Read other skill files when their **When to use** trigger matches.
+
+The bottom of `skills/INDEX.md` has a **Personal Customizations** section for any session-start rituals, private CLIs, or agent-manager integrations you want Simon to honor. Edit that section to suit your setup.
 
 ## Maintenance
 
@@ -46,6 +48,12 @@ After completing any task that required **3 or more attempts**, write a hint fil
 See [hints/hints.md](hints/hints.md) for when and how to write hints.
 
 ## Simon CLI Ergonomics
+
+`simon` is a global binary on `$PATH`. **Never `cd` before running it** — just invoke `simon` directly. More generally, the Simon project root is already the session cwd: never prefix any Bash command with `cd` into this project, and use project-relative paths (`hints/...`, `.secrets/...`) directly.
+
+**`simon instances` lists DISABLED entries.** When the user says "all instances" they mean the active ones — filter out anything tagged `DISABLED — skipped by all simon commands` before batch operations. Confirm the active subset back to the user if it materially changes scope.
+
+**Never use `curl` for ServiceNow API calls.** Always use the `simon` CLI instead — it handles auth, instance resolution, and output formatting. For large responses, use `--output stdout` to avoid truncation: `simon get <table> <id> -f <fields> -i <instance> --output stdout > /tmp/output.json`.
 
 When a `simon` CLI call fails because of a wrong command name or unsupported flag syntax, treat it as a candidate for improving the CLI. If the intent was clear but the syntax was off (e.g. `simon rest` instead of `simon api`, or `--body` instead of stdin), consider adding an alias or accepting the alternative syntax so it "just works" next time. The CLI should be lenient and forgiving — if a human or an LLM can reasonably guess a command shape, that shape should work.
 

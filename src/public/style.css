@@ -321,6 +321,8 @@ code {
 .instance-table tbody tr.inst-row:hover { background: #1c2128; }
 .instance-table tbody tr.inst-row.active-row { background: #1a2840; }
 .instance-table tbody tr.inst-row.active-row:hover { background: #1e2f4a; }
+.instance-table tbody tr.inst-row-disabled .inst-name-cell,
+.instance-table tbody tr.inst-row-disabled .inst-url-cell { opacity: 0.5; }
 
 .instance-table td {
   padding: 8px 10px;

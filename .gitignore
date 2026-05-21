@@ -1,10 +1,7 @@
 node_modules/
 .env
+.secrets/
 instances.json
 .claude/settings.local.json
 logs.ndjson
 .DS_Store
-enhancements.md
-todo/labrepair.md
-docs/
-TODO.md

@@ -14,51 +14,11 @@ Simon is Era 3: you describe what you need, Simon connects directly to your inst
 
 ---
 
-## New to this? Start here
+## Installation
 
-See [INSTALLATION.md](INSTALLATION.md) for a step-by-step guide covering VS Code, Claude Code, Node.js, and first use — no prior experience required.
-
-## Prerequisites
-
-- **Node.js 20.12+** — check your version with `node --version`. Download from [nodejs.org](https://nodejs.org) if needed.
-- **Claude Code** — Simon's CLI integrates directly with Claude Code.
-
-## Getting Started
-
-**1. Fork and clone the repo**
-
-Fork the repo on GitHub (top-right **Fork** button), then clone your fork:
-```bash
-git clone https://github.com/<your-username>/simon.git
-cd simon
-```
+See [INSTALLATION.md](INSTALLATION.md).
 
 > Forking is recommended because `hints/` accumulates your own ServiceNow knowledge over time — forking lets you commit and back up those hints in your own repo. You can still pull upstream updates with `git pull upstream main`.
-
-**2. Install dependencies and register the CLI**
-```bash
-npm install
-npm link
-```
-
-**3. Start the web server**
-```bash
-npm start
-```
-
-Open [http://localhost:3001](http://localhost:3001) in your browser.
-
-**4. Add a ServiceNow instance**
-
-Go to the **Instances** tab and add your instance. Two auth methods are supported:
-- **OAuth 2.0** *(recommended)* — client ID + client secret (requires an OAuth provider set up on the instance)
-- **Basic auth** — username + password (simpler to set up, but less secure)
-
-Your credentials are stored locally in `instances.json` (gitignored — never committed).
-
-**5. Use the `simon` CLI**
-
-`npm link` (from step 2) registers the `simon` command globally so it's available in any terminal. Run `simon --help` to discover all available commands.
 
 ## What you can do with Simon
 

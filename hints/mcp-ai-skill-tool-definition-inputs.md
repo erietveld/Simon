@@ -39,7 +39,7 @@ simon query sn_mcp_ai_skill_tool_input \
 ### Step 3: Create missing input records
 
 ```bash
-simon create sn_mcp_ai_skill_tool_input <<'EOF'
+simon create sn_mcp_ai_skill_tool_input --body - <<'EOF'
 {
   "tool_definition": "<sn_mcp_ai_skill_tool_definition sys_id>",
   "tool_input": "<sys_one_extend_definition_attribute sys_id>",

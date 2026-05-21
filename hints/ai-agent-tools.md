@@ -6,7 +6,7 @@ How to add tools to an agent. See `ai-agent-config.md` for table reference and a
 
 Step 1 — create the tool definition:
 ```bash
-simon create sn_aia_tool <<'EOF'
+simon create sn_aia_tool --body - <<'EOF'
 {
   "name": "<ToolName>",
   "type": "crud",
@@ -21,7 +21,7 @@ EOF
 
 Step 2 — assign tool to agent with query config:
 ```bash
-simon create sn_aia_agent_tool_m2m <<'EOF'
+simon create sn_aia_agent_tool_m2m --body - <<'EOF'
 {
   "name": "<ToolName>",
   "agent": "<sn_aia_agent_sys_id>",
@@ -56,7 +56,7 @@ simon query sys_hub_flow \
 Step 2 — create the tool definition:
 ```bash
 # target_document links to the actual subflow
-simon create sn_aia_tool <<'EOF'
+simon create sn_aia_tool --body - <<'EOF'
 {
   "name": "<ToolName>",
   "type": "subflow",
@@ -72,7 +72,7 @@ EOF
 
 Step 3 — assign tool to agent:
 ```bash
-simon create sn_aia_agent_tool_m2m <<'EOF'
+simon create sn_aia_agent_tool_m2m --body - <<'EOF'
 {
   "name": "<ToolName>",
   "agent": "<sn_aia_agent_sys_id>",
@@ -104,7 +104,7 @@ simon query sys_hub_action_type_definition \
 
 Step 2 — create the tool definition:
 ```bash
-simon create sn_aia_tool <<'EOF'
+simon create sn_aia_tool --body - <<'EOF'
 {
   "name": "<ToolName>",
   "type": "action",
@@ -131,6 +131,49 @@ Step 3 — assign tool to agent (same as subflow pattern above).
 | Add Work Note To Task | action | `10f7bbf7e7b00300c4726188d2f6a9db` | ah_task (Reference), ah_work_note (string) | **Avoid** — ah_task is a Reference type, unsupported by agents |
 
 ---
+
+## CRUD Update tool reports success but nothing changes
+
+Symptom: an `update` Record Operations tool consistently returns
+`"1 out of 1 record updated in the <table> table."` but the target field never moves. `sys_mod_count` increments and `sys_updated_by` becomes the agent's run-as user, but the audit/history shows no field change. Easy to misdiagnose as an ACL/role problem.
+
+Cause: the tool's `crudInputs` on `sn_aia_agent_tool_m2m.inputs` is missing the `fieldValues` array. The OOB CRUD script does:
+```js
+var fieldValues = inputs.crudInputs.fieldValues ? inputs.crudInputs.fieldValues : [];
+```
+With no `fieldValues`, the loop runs zero `gr.setValue()` calls, then calls `gr.update()` — a no-op write that bumps mod_count. The tool's success message is based on the returned sys_id, so it lies cheerfully.
+
+How to confirm:
+```bash
+# pull the tool task and look at metadata.inputs.crudInputs — fieldValues will be missing
+simon get sn_aia_execution_task <tool_task_sys_id> -i <instance> --output stdout \
+  | python3 -c "import json,sys;d=json.load(sys.stdin);print(d['metadata']['value'])"
+```
+
+Fix: in AI Agent Studio open the tool's Record Operation config and add an "Inputs to update" row mapping each field to a template (e.g. `state` → `{{new_state}}`). The script's `parseValue` resolves `{{var}}` against the input bag, including choice-label matching. In the JSON on `sn_aia_agent_tool_m2m.inputs`, this lands as:
+```json
+"fieldValues":[{"field":{"id":"state","type":"choice"},"value":{"fieldValue":"{{new_state}}"}}]
+```
+
+## Duplicate tool m2m rows (Build Agent side effect)
+
+Symptom: an agent gets "stuck" mid-run — `sn_aia_execution_plan.state=in_progress`, the agent task is `ongoing`, and a few gen_ai/tool tasks fire then silence. Often the run actually does have a tool failure that's not loud.
+
+Likely cause when the agent was edited via Build Agent: a duplicate `sn_aia_agent_tool_m2m` row pointing at the **same** underlying `sn_aia_tool`. Build Agent re-adds tools when it edits an agent, and existing rows aren't always deduped — you end up with two entries with the same `tool` reference but different m2m sys_ids and creation timestamps.
+
+How to detect:
+```bash
+simon query sn_aia_agent_tool_m2m \
+  --query "agent=<agent_sys_id>" \
+  --fields "sys_id,name,tool,active,sys_created_on,sys_created_by"
+```
+Group by `tool.value` — any tool sys_id appearing more than once is a duplicate. The earlier row is usually the legitimate one; the later one is the unwanted clone.
+
+Fix: delete (or deactivate) the later-created m2m row. Don't touch `sn_aia_tool` itself.
+
+Note: `sys_created_by` will show your user even when Build Agent is the actual creator — Build Agent acts under your identity, so audit alone can't distinguish manual vs Build-Agent creates. Use timestamp clustering and your session memory instead.
+
+Related: a duplicate Search/RAG tool is especially painful because the agent's instructions may mandate "Search before write" — every Create blocks on a Search call, and if both Search rows are misconfigured (e.g. missing `search_profile`) the agent loops without progress until the run times out.
 
 ## Gotchas
 

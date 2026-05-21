@@ -117,10 +117,24 @@ simon query sn_aia_agent_tool_m2m \
 
 ### Trigger conditions
 
-- `trigger_flow_definition_type` determines when the trigger evaluates: `record_create`, `record_update`, etc.
+- `trigger_flow_definition_type` determines when the trigger evaluates: `record_create`, `record_update`, `record_create_or_update`.
 - For `record_create` triggers, do NOT use `CHANGESTO` operators — the record is new, fields don't "change to" a value. Use simple equality: `state=2` not `stateCHANGESTO2`.
 - For `record_update` triggers, `CHANGESTO` and `VALCHANGES` operators work correctly.
 - The `condition` field uses standard ServiceNow encoded query syntax.
+
+### Trigger channel — mandatory and easily malformed via API
+
+`sn_aia_trigger_configuration.channel` is a **mandatory** reference to `sys_cs_channel`. AI Agent Studio's UI requires you to pick one before you can save/activate the trigger.
+
+- Studio shows the trigger as **Inactive** until a valid channel is bound, even if `active=true` is set in the DB.
+- Creating or updating a trigger via the Table API by passing the channel **name** (e.g. `"channel": "Now Assist Panel"`) writes a malformed reference: the link URL ends up as `.../sys_cs_channel/Now Assist Panel` instead of a sys_id. The flow still fires, `sys_flow_context` shows COMPLETE, but **no `sn_aia_execution_plan` is created** — the agent is never actually invoked.
+- Always pass the **sys_id** of the channel — look up the "Now Assist Panel" entry in `sys_cs_channel` on the target instance.
+- The reliable fix: open the trigger in AI Agent Studio and re-pick the channel from the dropdown — Studio writes the proper sys_id and clears the inactive state in one move.
+
+Diagnostic chain when an autonomous agent never runs:
+1. `sn_aia_execution_plan` filtered by `agent=<sys_id>` → empty.
+2. `sys_flow_context` filtered by the trigger's `trigger_flow` sys_id → COMPLETE entries exist.
+3. The flow fires but the agent doesn't → check the trigger's `channel.value`; if it looks like a name string instead of a 32-char sys_id, that's the bug.
 
 ---
 

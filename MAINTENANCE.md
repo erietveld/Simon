@@ -103,6 +103,24 @@ grep -rE '[0-9a-f]{32}' AgentGallery/ --include="*.md"
 grep -rE '\b(INC|CHG|RITM|PRB|TASK|REQ|SCTASK)\d{7}\b' AgentGallery/ --include="*.md"
 ```
 
+## No curl in Hints or Skills
+
+Never recommend `curl` for ServiceNow API calls in hint files, skills, or agent definitions. Always use the `simon` CLI instead — it handles auth, instance resolution, and output formatting.
+
+For large responses (e.g. `sys_generative_ai_log` prompts at 40–60 KB), use `--output stdout` to bypass the default 148-line offload:
+
+```bash
+simon get <table> <sys_id> -f <fields> -i <instance> --output stdout > /tmp/output.json
+```
+
+**When auditing:** search for stray `curl` references in hints and skills:
+
+```bash
+grep -r 'curl' hints/ skills/ --include="*.md"
+```
+
+Replace any found with the equivalent `simon` command.
+
 ## Keep CLAUDE.md Token-Efficient
 
 CLAUDE.md is loaded into every conversation, so it should stay lean. Move detailed content into dedicated files and replace it with a short reference.

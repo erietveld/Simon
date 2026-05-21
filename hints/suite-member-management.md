@@ -48,7 +48,7 @@ Direct `DELETE` and direct field updates via REST are **both blocked**:
 ### Step 1 — Create the Script Include
 
 ```bash
-simon create sys_script_include -i <instance> --scope 781f36a96fef21005be8883e6b3ee43d <<'EOF'
+simon create sys_script_include -i <instance> --scope 781f36a96fef21005be8883e6b3ee43d --body - <<'EOF'
 {
   "name": "TempSuiteCleanup",
   "api_name": "sn_appclient.TempSuiteCleanup",
@@ -133,10 +133,14 @@ echo "To upgrade: $(wc -l < /tmp/upgrade-list.tsv | tr -d ' ')"
 awk -F'\t' '{print "  "$3, $4, "->", $2}' /tmp/upgrade-list.tsv
 
 # 4. Fire CI/CD installs
+# CRITICAL: redirect simon's stdin to /dev/null. The `while read … done < file.tsv`
+# loop pipes that file into every command in the body, including simon api,
+# which then errors out with "data is piped on stdin but no --body flag was given"
+# and produces no tracker. Without </dev/null this loop silently fails 100%.
 while IFS=$'\t' read -r sys_id ver scope _; do
   echo "Firing: $scope -> $ver"
   tracker=$(simon api "/api/sn_cicd/app_repo/install?sys_id=${sys_id}&version=${ver}&auto_upgrade_base_app=true" \
-    -i <instance> -X POST 2>&1 | grep -o '"id": "[^"]*"' | head -1 | sed 's/"id": "//;s/"//')
+    -i <instance> -X POST </dev/null 2>&1 | grep -o '"id": "[^"]*"' | head -1 | sed 's/"id": "//;s/"//')
   echo "  tracker: $tracker"
   echo "${scope}	${tracker}" >> /tmp/tracker-ids.txt
 done < /tmp/upgrade-list.tsv
@@ -164,3 +168,5 @@ simon query sys_execution_tracker -i <instance> \
 - **The App Manager UI scope picker** may not show `sn_appclient` in the dropdown — the Script Include workaround is the reliable path.
 - **Suite siblings ≠ real dependencies** — the M2M table only drives the Plugin Manager UI grouping. The CI/CD API ignores suite membership and resolves real `dependencies` fields only.
 - **Apps not in `sys_scope`** are not installed on the instance — skip them; don't try to install apps that were never there.
+- **High tracker failure rate after a bulk upgrade is usually benign.** With `auto_upgrade_base_app=true`, when one install pulls a sibling up as a base-app dependency, the later install for that sibling fails with `"Application version is currently installed"`. In a 52-app run this can show as 30+ "failures" while the instance is actually correct. **Re-diff `sys_scope` vs the suite targets after the run** — that is the source of truth, not the tracker pass/fail counts.
+- **`"Invalid application downgrade"` is expected and permanent.** When the installed version is *newer* than the suite specifies, CI/CD refuses to install. Don't retry these — the instance is ahead of the suite, which is fine. Identify them upfront from the diff (target version < installed version) and treat them as no-ops.

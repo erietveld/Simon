@@ -125,6 +125,7 @@ app.get('/api/instances', (req, res) => {
     name: inst.name,
     url: inst.url,
     authType: inst.authType,
+    disabled: !!inst.disabled,
     loggedIn: auth.isLoggedIn(inst),
     // Include non-secret fields needed by the UI
     username: inst.username || null,
@@ -162,7 +163,7 @@ app.post('/api/instances', (req, res) => {
 
 // PUT /api/instances/:id — update instance settings
 app.put('/api/instances/:id', (req, res) => {
-  const { name, url, authType, clientId, clientSecret, username, password } = req.body;
+  const { name, url, authType, clientId, clientSecret, username, password, disabled } = req.body;
   const changes = {};
   if (name !== undefined) changes.name = name;
   if (url !== undefined) changes.url = normalizeUrl(url);
@@ -171,6 +172,7 @@ app.put('/api/instances/:id', (req, res) => {
   if (clientSecret !== undefined) changes.clientSecret = clientSecret;
   if (username !== undefined) changes.username = username;
   if (password !== undefined) changes.password = password;
+  if (disabled !== undefined) changes.disabled = !!disabled;
 
   const updated = auth.updateInstance(req.params.id, changes);
   if (!updated) return res.status(404).json({ error: 'Instance not found' });

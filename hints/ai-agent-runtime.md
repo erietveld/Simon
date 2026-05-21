@@ -31,20 +31,29 @@ sn_aia_execution_plan
                  └─ gen_ai_log_id → sys_generative_ai_log  (full prompt + response)
 ```
 
-## sn_aia_message Field Names
+## sn_aia_message — Quickest Debug Path
 
-The correct fields are `message` and `user_message` — NOT `content` (that field does not exist):
+**Start here for any "what happened in this run?" question.** A single ordered query gives you the user input, every tool result, every RAG hit, and the final agent reply — all in one chronological list. Faster than walking execution_task → metadata → output.
 
 ```bash
 simon query sn_aia_message \
-  --query "execution_plan=<sn_aia_execution_plan_sys_id>" \
-  --fields "sys_id,role,type,user_message,message,message_sequence,sys_created_on" \
-  --order-by message_sequence \
-  --display-value all
+  -q "execution_plan=<plan_sys_id>^ORDERBYsys_created_on" \
+  -f sys_created_on,role,type,message \
+  -i <instance> --output stdout
 ```
 
-Message roles: `user`, `user_profile`, `agent`
-Message types: `conversation` (tool output), null (regular turn)
+- **Order by `sys_created_on`, NOT `message_sequence`** — `message_sequence` is empty on `user_profile` and `conversation` rows, so sorting by it scrambles the trail.
+- Fields: `message` and `user_message` — **NOT** `content` (that field does not exist).
+- Roles: `user`, `user_profile`, `agent`
+- Types: `conversation` (tool output / RAG result, JSON in `message`), null (regular turn or final reply)
+- Tool **outputs** appear here as `agent/conversation` JSON. Tool **inputs** don't — for those, fall back to `sn_aia_execution_task.metadata` (see below).
+
+### Common error signatures in conversation messages
+
+| Snippet in `message` | Meaning |
+|---|---|
+| `FDIH transformation failed: Failed to prepare request: No value present` | A subflow-type tool was called with a null required input. Check the previous gen_ai turn to see which tool the LLM picked and what inputs it filled. |
+| `Sorry, there was a problem on my side trying to complete this request` | Agent's user-facing give-up reply. Always preceded by a tool error or a gen_ai failure — look at the message just before. |
 
 ## Useful Debug Queries
 
@@ -84,6 +93,25 @@ simon query sn_aia_execution_plan \
 > Timestamps are stored in UTC — the instance may be in a different timezone.
 
 ### Find tool calls within a run
+
+**Prefer `sn_aia_execution_task` with `type=tool`** — `sn_aia_tools_execution` has a read ACL on `execution_task` that 403s for non-privileged users (`Insufficient rights to query records — Field(s) present in the query do not have permission to be read`). The execution_task record carries everything you need:
+
+- `metadata` (JSON string) — contains `inputs` (the tool call arguments) and the tool `name`/`id`
+- `output` (JSON string) — contains the tool result
+- `description` — human-readable tool name (e.g. "Update Jumble State", "Create Sparkle")
+- `execution_time_ms`, `start_time`, `status`
+
+```bash
+simon query sn_aia_execution_task \
+  --query "execution_plan=<plan_sys_id>^type=tool" \
+  --fields "sys_id,description,metadata,output,execution_time_ms,start_time,status" \
+  --order-by sys_created_on \
+  --display-value all
+```
+
+> The `output` field is double-encoded JSON: `{"result": "{\"output\":..., \"Output Fields\":{...}}"}` — parse twice.
+
+Only fall back to `sn_aia_tools_execution` if you specifically need fields not present on the task record (and have the ACL for it):
 ```bash
 simon query sn_aia_tools_execution \
   --query "execution_task=<sn_aia_execution_task_sys_id>" \
@@ -93,7 +121,18 @@ simon query sn_aia_tools_execution \
 
 ### Find messages in a run
 
-See the `sn_aia_message Field Names` section above for the correct query and field names.
+See the `sn_aia_message — Quickest Debug Path` section above.
+
+### List tools attached to an agent
+
+```bash
+simon query sn_aia_agent_tool_m2m \
+  -q "agent=<sn_aia_agent_sys_id>" \
+  -f tool.name,tool.type,tool.description,tool.sys_updated_on,sys_updated_on \
+  -l 50 -i <instance>
+```
+> **Use `-q`, not positional.** `simon query <table> "<filter>"` silently drops the filter and returns the first 20 rows of the table (looks like a permission issue but is just syntax). Always pass filters via `-q`/`--query`.
+> The m2m row's `sys_updated_on` shows when the tool was linked to this agent — handy for "what did Build Agent add today?"
 
 ### Find all LLM calls in a run
 ```bash
@@ -119,17 +158,21 @@ simon get sys_generative_ai_log <gen_ai_log_id> \
 ```
 > The `prompt` field is a JSON string: `{"prompt":[{"role":"system","content":"..."},{"role":"user",...},...]}`
 > The system prompt alone is typically **40–50 KB**. The CLI caps large responses at 148 lines and writes the rest to a temp file.
-> **To get the full prompt**: use `curl` directly with a refreshed OAuth token and pipe through Python to extract `prompt[0].content`:
+> **To get the full prompt**: use `--output stdout` to bypass the 148-line offload limit and pipe to a file:
 > ```bash
-> curl -s -H "Authorization: Bearer <token>" \
->   "https://<instance>.service-now.com/api/now/table/sys_generative_ai_log/<sys_id>?sysparm_fields=prompt" \
->   | python3 -c "
+> simon get sys_generative_ai_log <gen_ai_log_id> \
+>   -f prompt,response -i <instance> --output stdout > /tmp/agent_log.json
+> ```
+> Then extract the system prompt with Python:
+> ```bash
+> python3 -c "
 > import json,sys
-> d=json.load(sys.stdin)
-> obj=json.loads(d['result']['prompt'])
-> for m in obj['prompt']:
->     if m['role']=='system':
->         sys.stdout.write(m['content']); break
+> with open('/tmp/agent_log.json') as f: data=json.load(f)
+> msgs = json.loads(data['prompt']) if isinstance(data['prompt'],str) else data['prompt']
+> if isinstance(msgs,dict): msgs=msgs.get('prompt',[])
+> for m in msgs:
+>     if m.get('role')=='system':
+>         sys.stdout.write(m.get('content','')); break
 > " > /tmp/system_prompt.txt
 > ```
 
@@ -144,6 +187,27 @@ GET /api/sn_build_agent/build_agent_api/conversations/{id}/messages
 This endpoint requires a **user API token** (not the standard OAuth token) — it returns 401 with normal Simon credentials.
 
 The same data is fully accessible via the Table API using the tables above. The `.do?sys_id=` URL embedded in gen_ai task output is just a ServiceNow form link, not a download endpoint.
+
+---
+
+## Trigger fired but no execution_plan exists
+
+Symptom: a record matches an active `sn_aia_trigger_configuration`, but no `sn_aia_execution_plan` is ever created for it. No error visible in the agent UI.
+
+Cause: the agent is **disabled / unpublished**. The trigger fires, but the runtime refuses to start a plan.
+
+Diagnose via syslog (bound by time + indexed source):
+
+```bash
+simon query syslog -i <instance> \
+  --query "sys_created_on>2026-05-20 09:43:00^sys_created_on<2026-05-20 09:55:00^source=sn_aia" \
+  --fields "sys_created_on,level,source,message" \
+  --order-by sys_created_on --order-dir desc --limit 30
+```
+
+Look for: `[AIA Flow Action] Trying to execute a disabled agent : <agent_sys_id>`
+
+Fix: republish/enable the agent in AI Agent Studio. Editing an agent can silently flip it back to draft — JUM0001015 ran fine, then a later edit left the agent disabled and JUM0001016's trigger fired into the void.
 
 ---
 
